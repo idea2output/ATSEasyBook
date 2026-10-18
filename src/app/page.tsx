@@ -37,12 +37,13 @@ export default function DashboardPage() {
   const handleCreateNewBook = async (withSample: boolean = false) => {
     try {
       setIsCreating(true);
-      const title = withSample ? 'The Eldridge Voyage (Sample Book)' : 'Untitled Manuscript';
-      const newBook = await bookRepository.createBook(title, withSample);
+      const newBook = withSample
+        ? await bookRepository.getOrCreateSampleBook()
+        : await bookRepository.createBook('Untitled Manuscript');
       router.push(`/books/${newBook.id}`);
     } catch (err) {
       console.error(err);
-      setError('Failed to create new book. Please try again.');
+      setError('Failed to create or load book. Please try again.');
       setIsCreating(false);
     }
   };

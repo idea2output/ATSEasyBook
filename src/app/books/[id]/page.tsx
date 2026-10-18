@@ -90,6 +90,14 @@ export default function BookEditorPage() {
     };
   }, [bookId]);
 
+  // Keep refs for unmount and beforeunload synchronous flushing
+  const bookRef = useRef<BookProject | null>(book);
+  const hasUnsavedChangesRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    bookRef.current = book;
+  }, [book]);
+
   // Recalculate pagination whenever manuscript blocks or template changes
   const refreshPagination = useCallback((currentBook: BookProject) => {
     const template = getTemplateById(currentBook.templateId);
@@ -100,13 +108,49 @@ export default function BookEditorPage() {
     setPages(paginated);
   }, []);
 
-  // Save changes to storage repository
+  // Synchronous flush of any pending unsaved edits (used on beforeunload, unmount, and navigation)
+  const flushPendingSaveSync = useCallback(() => {
+    if (hasUnsavedChangesRef.current && bookRef.current) {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      const saved = bookRepository.saveBookSync(bookRef.current);
+      bookRef.current = saved;
+      hasUnsavedChangesRef.current = false;
+      setHasUnsavedChanges(false);
+      setLastSavedAt(new Date(saved.updatedAt));
+      return saved;
+    }
+    return null;
+  }, []);
+
+  // Listen for beforeunload to guarantee no data loss on page refresh or tab close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      flushPendingSaveSync();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      flushPendingSaveSync();
+    };
+  }, [flushPendingSaveSync]);
+
+  // Save changes explicitly to storage repository
   const handleSave = useCallback(async () => {
-    if (!book) return;
+    if (!bookRef.current) return;
     try {
       setIsSaving(true);
-      const saved = await bookRepository.saveBook(book);
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+      const saved = bookRepository.saveBookSync(bookRef.current);
+      bookRef.current = saved;
       setBook(saved);
+      hasUnsavedChangesRef.current = false;
       setHasUnsavedChanges(false);
       setLastSavedAt(new Date(saved.updatedAt));
     } catch (err) {
@@ -114,7 +158,7 @@ export default function BookEditorPage() {
     } finally {
       setIsSaving(false);
     }
-  }, [book]);
+  }, []);
 
   // Update book state and schedule autosave
   const handleUpdateBook = useCallback(
@@ -123,27 +167,33 @@ export default function BookEditorPage() {
         if (!prev) return null;
         const updated = { ...prev, ...updatedFields };
 
+        bookRef.current = updated;
+        hasUnsavedChangesRef.current = true;
+        setHasUnsavedChanges(true);
+
         // Real-time pagination update
         refreshPagination(updated);
 
-        setHasUnsavedChanges(true);
-
-        // Schedule autosave after 1200ms debounce
+        // Schedule autosave after 600ms debounce
         if (autosaveTimerRef.current) {
           clearTimeout(autosaveTimerRef.current);
         }
-        autosaveTimerRef.current = setTimeout(async () => {
+        autosaveTimerRef.current = setTimeout(() => {
           setIsSaving(true);
           try {
-            const saved = await bookRepository.saveBook(updated);
-            setHasUnsavedChanges(false);
-            setLastSavedAt(new Date(saved.updatedAt));
+            if (bookRef.current) {
+              const saved = bookRepository.saveBookSync(bookRef.current);
+              bookRef.current = saved;
+              hasUnsavedChangesRef.current = false;
+              setHasUnsavedChanges(false);
+              setLastSavedAt(new Date(saved.updatedAt));
+            }
           } catch (e) {
             console.error('Autosave failed:', e);
           } finally {
             setIsSaving(false);
           }
-        }, 1200);
+        }, 600);
 
         return updated;
       });
@@ -153,16 +203,17 @@ export default function BookEditorPage() {
 
   // Explicit Format Action
   const handleFormatManuscript = useCallback(() => {
-    if (!book) return;
-    const blocks = parseManuscript(book.rawManuscript);
+    if (!bookRef.current) return;
+    const blocks = parseManuscript(bookRef.current.rawManuscript);
     const updated = {
-      ...book,
+      ...bookRef.current,
       formattedBlocks: blocks,
     };
+    bookRef.current = updated;
     setBook(updated);
     refreshPagination(updated);
     handleSave();
-  }, [book, refreshPagination, handleSave]);
+  }, [refreshPagination, handleSave]);
 
   if (isLoading) {
     return (
@@ -211,7 +262,8 @@ export default function BookEditorPage() {
         <div className="flex items-center space-x-3">
           <Link
             href="/"
-            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 transition-colors"
+            onClick={() => flushPendingSaveSync()}
+            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none rounded px-1"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Dashboard</span>
@@ -225,11 +277,12 @@ export default function BookEditorPage() {
         </div>
 
         {/* View Layout Mode Buttons (Split / Editor Only / Preview Only) */}
-        <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+        <div className="flex items-center space-x-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs" role="group" aria-label="Layout view mode">
           <button
             type="button"
             onClick={() => setLayoutMode('split')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded font-medium transition-colors ${
+            aria-pressed={layoutMode === 'split'}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded font-medium transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
               layoutMode === 'split'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -243,7 +296,8 @@ export default function BookEditorPage() {
           <button
             type="button"
             onClick={() => setLayoutMode('editor-only')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded font-medium transition-colors ${
+            aria-pressed={layoutMode === 'editor-only'}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded font-medium transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
               layoutMode === 'editor-only'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -257,7 +311,8 @@ export default function BookEditorPage() {
           <button
             type="button"
             onClick={() => setLayoutMode('preview-only')}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded font-medium transition-colors ${
+            aria-pressed={layoutMode === 'preview-only'}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded font-medium transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-none ${
               layoutMode === 'preview-only'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'

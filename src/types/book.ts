@@ -51,6 +51,7 @@ export interface BookProject {
   rawManuscript: string;
   templateId: string;
   formattedBlocks: ManuscriptBlock[];
+  isSample?: boolean;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
 }

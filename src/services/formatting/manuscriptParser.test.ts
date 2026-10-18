@@ -92,5 +92,42 @@ Before the world was shaped, there were only stars and deep waters.`;
       expect(blocks[1].type).toBe('paragraph');
       expect(blocks[1].text).toContain('Before the world was shaped');
     });
+
+    it('correctly parses the Phase 1 Acceptance Test exact input', () => {
+      const input = `PROLOGUE
+
+This is the first paragraph.
+
+Chapter 1: The Departure
+
+This is the second paragraph.
+
+A normal paragraph that contains UPPERCASE WORDS but is longer than 80 characters and must remain body text.`;
+
+      const blocks = parseManuscript(input);
+
+      expect(blocks.length).toBe(5);
+
+      // Block 1: PROLOGUE
+      expect(blocks[0].type).toBe('chapter-heading');
+      expect(blocks[0].text).toBe('PROLOGUE');
+
+      // Block 2: This is the first paragraph.
+      expect(blocks[1].type).toBe('paragraph');
+      expect(blocks[1].text).toBe('This is the first paragraph.');
+
+      // Block 3: Chapter 1: The Departure
+      expect(blocks[2].type).toBe('chapter-heading');
+      expect(blocks[2].text).toBe('Chapter 1: The Departure');
+      expect(blocks[2].chapterNumber).toBe(1);
+
+      // Block 4: This is the second paragraph.
+      expect(blocks[3].type).toBe('paragraph');
+      expect(blocks[3].text).toBe('This is the second paragraph.');
+
+      // Block 5: Paragraph with UPPERCASE WORDS > 80 chars
+      expect(blocks[4].type).toBe('paragraph');
+      expect(blocks[4].text).toBe('A normal paragraph that contains UPPERCASE WORDS but is longer than 80 characters and must remain body text.');
+    });
   });
 });

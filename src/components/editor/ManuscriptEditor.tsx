@@ -92,7 +92,8 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               type="button"
               onClick={onSave}
               disabled={isSaving}
-              className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+              aria-label="Save manuscript now"
+              className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save</span>
@@ -110,7 +111,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               id="template-select"
               value={book.templateId}
               onChange={(e) => onUpdateBook({ templateId: e.target.value })}
-              className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
               {AVAILABLE_TEMPLATES.map((tmpl) => (
                 <option key={tmpl.id} value={tmpl.id}>
@@ -124,9 +125,10 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             <button
               type="button"
               onClick={() => setShowFormattingTips(!showFormattingTips)}
-              className="text-slate-400 hover:text-slate-600 p-1.5 rounded"
+              className="text-slate-400 hover:text-slate-600 p-1.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
               title="Formatting Rules & Tips"
-              aria-label="Formatting Rules"
+              aria-label="Formatting Rules and Tips"
+              aria-expanded={showFormattingTips}
             >
               <HelpCircle className="w-4 h-4" />
             </button>
@@ -134,7 +136,8 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             <button
               type="button"
               onClick={onFormatManuscript}
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
+              aria-label="Format manuscript"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
             >
               <Wand2 className="w-3.5 h-3.5" />
               <span>Format manuscript</span>
@@ -162,11 +165,13 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
 
       {/* Editor Tabs: Raw Manuscript vs Structured Blocks breakdown */}
       <div className="px-4 border-b border-slate-200 bg-slate-50/30 flex items-center justify-between">
-        <div className="flex space-x-2">
+        <div className="flex space-x-2" role="tablist" aria-label="Editor views">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'raw'}
             onClick={() => setActiveTab('raw')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors ${
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
               activeTab === 'raw'
                 ? 'border-indigo-600 text-indigo-600 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -177,8 +182,10 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
           </button>
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'blocks'}
             onClick={() => setActiveTab('blocks')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors ${
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
               activeTab === 'blocks'
                 ? 'border-indigo-600 text-indigo-600 bg-white'
                 : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -202,6 +209,9 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
       <div className="flex-1 p-4 overflow-auto">
         {activeTab === 'raw' ? (
           <div className="h-full flex flex-col">
+            <label htmlFor="raw-manuscript-input" className="sr-only">
+              Manuscript Text Content
+            </label>
             <textarea
               id="raw-manuscript-input"
               value={book.rawManuscript}
@@ -228,6 +238,7 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
               book.formattedBlocks.map((block, idx) => (
                 <div
                   key={block.id || idx}
+                  data-testid="structured-block"
                   className={`p-3 rounded-lg border text-xs ${
                     block.type === 'chapter-heading'
                       ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950 font-semibold'

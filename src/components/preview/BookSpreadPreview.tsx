@@ -66,6 +66,23 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
   const activeSpread = spreads[Math.min(currentSpreadIndex, Math.max(0, totalSpreads - 1))];
   const activeSinglePage = pages[Math.min(currentPageIndex, Math.max(0, pages.length - 1))];
 
+  const handleSwitchToSpread = () => {
+    const pageNum = activeSinglePage ? activeSinglePage.pageNumber : 1;
+    const targetSpread = spreads.findIndex(
+      (s) => s.left?.pageNumber === pageNum || s.right?.pageNumber === pageNum
+    );
+    if (targetSpread !== -1) {
+      setCurrentSpreadIndex(targetSpread);
+    }
+    setViewMode('spread');
+  };
+
+  const handleSwitchToSingle = () => {
+    const pageNum = activeSpread?.left?.pageNumber || activeSpread?.right?.pageNumber || 1;
+    setCurrentPageIndex(Math.max(0, Math.min(pages.length - 1, pageNum - 1)));
+    setViewMode('single');
+  };
+
   const handlePrev = () => {
     if (viewMode === 'spread') {
       setCurrentSpreadIndex((prev) => Math.max(0, prev - 1));
@@ -108,7 +125,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
       {/* Control Bar */}
       <div className="bg-white px-4 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
         {/* Navigation Controls */}
-        <div className="flex items-center space-x-1.5">
+        <div className="flex items-center space-x-1.5" role="navigation" aria-label="Book page navigation">
           <button
             type="button"
             onClick={() => {
@@ -116,7 +133,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
               else setCurrentPageIndex(0);
             }}
             disabled={viewMode === 'spread' ? currentSpreadIndex === 0 : currentPageIndex === 0}
-            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent"
+            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 disabled:hover:bg-transparent"
             title="First Page"
             aria-label="First Page"
           >
@@ -126,14 +143,14 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
             type="button"
             onClick={handlePrev}
             disabled={viewMode === 'spread' ? currentSpreadIndex === 0 : currentPageIndex === 0}
-            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent"
+            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 disabled:hover:bg-transparent"
             title="Previous"
             aria-label="Previous"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <span className="px-2 font-medium text-slate-700">
+          <span className="px-2 font-medium text-slate-700 min-w-[110px] text-center" aria-live="polite">
             {viewMode === 'spread' ? (
               activeSpread?.left && activeSpread?.right ? (
                 `Pages ${activeSpread.left.pageNumber}–${activeSpread.right.pageNumber} of ${pages.length}`
@@ -157,7 +174,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 ? currentSpreadIndex >= totalSpreads - 1
                 : currentPageIndex >= pages.length - 1
             }
-            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent"
+            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 disabled:hover:bg-transparent"
             title="Next"
             aria-label="Next"
           >
@@ -174,7 +191,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 ? currentSpreadIndex >= totalSpreads - 1
                 : currentPageIndex >= pages.length - 1
             }
-            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:hover:bg-transparent"
+            className="p-1.5 rounded text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 disabled:hover:bg-transparent"
             title="Last Page"
             aria-label="Last Page"
           >
@@ -185,11 +202,12 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
         {/* View Mode & Zoom Controls */}
         <div className="flex items-center space-x-3">
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200" role="group" aria-label="View mode">
             <button
               type="button"
-              onClick={() => setViewMode('spread')}
-              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+              onClick={handleSwitchToSpread}
+              aria-pressed={viewMode === 'spread'}
+              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 viewMode === 'spread'
                   ? 'bg-white text-indigo-700 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -201,8 +219,9 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setViewMode('single')}
-              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+              onClick={handleSwitchToSingle}
+              aria-pressed={viewMode === 'single'}
+              className={`flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-indigo-500 ${
                 viewMode === 'single'
                   ? 'bg-white text-indigo-700 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -215,11 +234,11 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
           </div>
 
           {/* Zoom buttons */}
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1" role="group" aria-label="Zoom controls">
             <button
               type="button"
               onClick={() => handleZoom(-0.1)}
-              className="p-1.5 rounded text-slate-600 hover:bg-slate-100"
+              className="p-1.5 rounded text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500"
               title="Zoom out"
               aria-label="Zoom out"
             >
@@ -231,7 +250,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
             <button
               type="button"
               onClick={() => handleZoom(0.1)}
-              className="p-1.5 rounded text-slate-600 hover:bg-slate-100"
+              className="p-1.5 rounded text-slate-600 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500"
               title="Zoom in"
               aria-label="Zoom in"
             >
@@ -240,9 +259,9 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
             <button
               type="button"
               onClick={() => setZoomScale(0.75)}
-              className="p-1.5 rounded text-slate-500 hover:bg-slate-100"
+              className="p-1.5 rounded text-slate-500 hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-500"
               title="Reset Zoom to 75%"
-              aria-label="Reset zoom"
+              aria-label="Reset zoom to 75%"
             >
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
@@ -251,14 +270,14 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
       </div>
 
       {/* Pages Canvas Area */}
-      <div className="flex-1 overflow-auto p-8 flex items-center justify-center">
+      <div className="flex-1 overflow-auto p-4 sm:p-8 flex items-start justify-center">
         <div
-          className="transition-transform duration-150 origin-center flex items-center justify-center"
+          className="m-auto transition-transform duration-150 origin-top flex items-center justify-center py-4"
           style={{ transform: `scale(${zoomScale})` }}
         >
           {viewMode === 'spread' ? (
             /* Side-by-side spread */
-            <div className="flex items-stretch justify-center relative">
+            <div className="flex items-stretch justify-center relative shadow-2xl rounded-sm">
               {/* Left (Verso) Page */}
               <BookPage
                 page={activeSpread?.left}
@@ -278,7 +297,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
             </div>
           ) : (
             /* Single Page */
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center shadow-2xl rounded-sm">
               <BookPage page={activeSinglePage} template={template} />
             </div>
           )}

@@ -5,8 +5,10 @@ export interface IBookRepository {
   getAllBooks(): Promise<BookProject[]>;
   getBookById(id: string): Promise<BookProject | null>;
   saveBook(book: BookProject): Promise<BookProject>;
+  saveBookSync(book: BookProject): BookProject;
   deleteBook(id: string): Promise<void>;
   createBook(title?: string): Promise<BookProject>;
+  getOrCreateSampleBook(): Promise<BookProject>;
 }
 
 const STORAGE_KEY = 'ats_easybook_projects_v1';
@@ -63,7 +65,7 @@ export class LocalStorageBookRepository implements IBookRepository {
     return found || null;
   }
 
-  async saveBook(book: BookProject): Promise<BookProject> {
+  saveBookSync(book: BookProject): BookProject {
     const books = this.getStoredBooks();
     const updatedBook: BookProject = {
       ...book,
@@ -82,23 +84,26 @@ export class LocalStorageBookRepository implements IBookRepository {
     return updatedBook;
   }
 
+  async saveBook(book: BookProject): Promise<BookProject> {
+    return this.saveBookSync(book);
+  }
+
   async deleteBook(id: string): Promise<void> {
     const books = this.getStoredBooks();
     const filtered = books.filter((b) => b.id !== id);
     this.saveStoredBooks(filtered);
   }
 
-  async createBook(title: string = 'Untitled Manuscript', withSample: boolean = false): Promise<BookProject> {
+  async createBook(title: string = 'Untitled Manuscript'): Promise<BookProject> {
     const now = new Date().toISOString();
     const id = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const manuscript = withSample ? SAMPLE_MANUSCRIPT : '';
 
     const newBook: BookProject = {
       id,
       title: title || 'Untitled Manuscript',
-      rawManuscript: manuscript,
+      rawManuscript: '',
       templateId: 'classic-novel-6x9',
-      formattedBlocks: parseManuscript(manuscript),
+      formattedBlocks: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -108,6 +113,32 @@ export class LocalStorageBookRepository implements IBookRepository {
     this.saveStoredBooks(books);
 
     return newBook;
+  }
+
+  async getOrCreateSampleBook(): Promise<BookProject> {
+    const books = this.getStoredBooks();
+    const existing = books.find(
+      (b) => b.isSample || b.title === 'The Eldridge Voyage (Sample Novel)'
+    );
+    if (existing) {
+      return existing;
+    }
+
+    const now = new Date().toISOString();
+    const sampleBook: BookProject = {
+      id: `sample-eldridge-voyage`,
+      title: 'The Eldridge Voyage (Sample Novel)',
+      rawManuscript: SAMPLE_MANUSCRIPT,
+      templateId: 'classic-novel-6x9',
+      formattedBlocks: parseManuscript(SAMPLE_MANUSCRIPT),
+      isSample: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    books.unshift(sampleBook);
+    this.saveStoredBooks(books);
+    return sampleBook;
   }
 }
 
