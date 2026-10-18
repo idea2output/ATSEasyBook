@@ -1,8 +1,8 @@
-import React from 'react';
 import {
   PagePreviewData,
   BookTemplate,
   PageBlock,
+  PageDesignSettings,
   TypographySettings,
 } from '@/types/book';
 import { getEffectiveAspectRatio } from '@/services/images/imageService';
@@ -13,6 +13,7 @@ interface BookPageProps {
   template: BookTemplate;
   authorName?: string;
   typographyOverrides?: Partial<TypographySettings>;
+  design?: Partial<PageDesignSettings>;
   isPlaceholder?: boolean;
   selectedPlacementId?: string | null;
   onSelectPlacement?: (placementId: string) => void;
@@ -23,6 +24,7 @@ export const BookPage: React.FC<BookPageProps> = ({
   template,
   authorName = '',
   typographyOverrides,
+  design,
   isPlaceholder = false,
   selectedPlacementId = null,
   onSelectPlacement,
@@ -60,11 +62,12 @@ export const BookPage: React.FC<BookPageProps> = ({
       return (
         <div key={`${block.blockId}-${idx}`} className="pt-6 pb-4 text-center">
           <h2
-            className="font-bold tracking-tight text-slate-900 leading-snug"
+            className="font-bold tracking-tight leading-snug"
             style={{
               fontFamily: effectiveTypo.headingFontFamily,
               fontSize: `${effectiveTypo.headingFontSizePt}pt`,
               lineHeight: template.typography.chapterHeadingLineHeight,
+              color: design?.headingColor || '#0f172a',
             }}
           >
             {block.text}
@@ -161,13 +164,14 @@ export const BookPage: React.FC<BookPageProps> = ({
     return (
       <p
         key={`${block.blockId}-${idx}`}
-        className={`text-slate-800 hyphens-auto ${
+        className={`hyphens-auto ${
           effectiveTypo.textAlign === 'justify' ? 'text-justify' : 'text-left'
         }`}
         style={{
           fontFamily: effectiveTypo.bodyFontFamily,
           fontSize: `${effectiveTypo.bodyFontSizePt}pt`,
           lineHeight: effectiveTypo.bodyLineHeight,
+          color: design?.textColor || '#1e293b',
           textIndent: shouldIndent ? `${effectiveTypo.paragraphIndentInches}in` : '0in',
           marginBottom: effectiveTypo.paragraphSpacingPt > 0 ? `${effectiveTypo.paragraphSpacingPt}pt` : '0.5rem',
         }}
@@ -182,7 +186,7 @@ export const BookPage: React.FC<BookPageProps> = ({
   return (
     <div
       data-testid={`book-page-${page.pageNumber}`}
-      className={`book-page-container border border-slate-200 select-text ${
+      className={`book-page-container relative border border-slate-200 select-text ${
         isVerso ? 'book-page-shadow-left' : 'book-page-shadow-right'
       }`}
       style={{
@@ -193,20 +197,49 @@ export const BookPage: React.FC<BookPageProps> = ({
         paddingLeft,
         paddingRight,
         fontFamily: effectiveTypo.bodyFontFamily,
+        backgroundColor: design?.backgroundColor || '#ffffff',
+        backgroundImage: (design?.backgroundImage || design?.backgroundImageUrl)
+          ? `url(${design.backgroundImage || design.backgroundImageUrl})`
+          : undefined,
+        backgroundSize:
+          design?.backgroundImageSize === 'tile'
+            ? 'auto'
+            : design?.backgroundImageSize || 'cover',
+        backgroundRepeat: design?.backgroundImageSize === 'tile' ? 'repeat' : 'no-repeat',
+        backgroundPosition: 'center',
       }}
     >
+      {/* Decorative Inset Border Layer (if enabled in Expert Design settings) */}
+      {design?.borderEnabled && (
+        <div
+          data-testid="page-decorative-border"
+          className="absolute pointer-events-none"
+          style={{
+            top: `${design.borderInsetInches ?? 0.35}in`,
+            bottom: `${design.borderInsetInches ?? 0.35}in`,
+            left: `${design.borderInsetInches ?? 0.35}in`,
+            right: `${design.borderInsetInches ?? 0.35}in`,
+            borderWidth: `${design.borderWidthPt ?? 1}pt`,
+            borderColor: design.borderColor || '#cbd5e1',
+            borderStyle: design.borderStyle || 'solid',
+            borderRadius: `${design.borderRadiusPt ?? 0}pt`,
+          }}
+        />
+      )}
+
       {/* Spine crease shadow effect */}
       <div className={`book-spine-crease ${isVerso ? 'book-spine-left' : 'book-spine-right'}`} />
 
       {/* Running Top Header */}
       <div
-        className={`h-6 text-[9pt] uppercase tracking-widest text-slate-500 font-sans flex items-center justify-between border-b border-slate-100/70 mb-3 select-none ${
+        className={`h-6 text-[9pt] uppercase tracking-widest font-sans flex items-center justify-between border-b border-slate-100/70 mb-3 select-none ${
           isOpeningChapterPage || page.pageNumber === 1 || page.isBlankPage ? 'invisible' : 'visible'
         }`}
+        style={{ color: design?.headerFooterColor || '#64748b' }}
       >
         {/* Top-outside page number */}
         {effectiveTypo.pageNumberPosition === 'top-outside' && isVerso && (
-          <span className="font-mono text-xs font-bold text-slate-700">{page.pageNumber}</span>
+          <span className="font-mono text-xs font-bold">{page.pageNumber}</span>
         )}
 
         <span className={`truncate max-w-[85%] ${isVerso ? 'text-left' : 'text-right ml-auto'}`}>
@@ -214,7 +247,7 @@ export const BookPage: React.FC<BookPageProps> = ({
         </span>
 
         {effectiveTypo.pageNumberPosition === 'top-outside' && !isVerso && (
-          <span className="font-mono text-xs font-bold text-slate-700">{page.pageNumber}</span>
+          <span className="font-mono text-xs font-bold">{page.pageNumber}</span>
         )}
       </div>
 
@@ -245,13 +278,14 @@ export const BookPage: React.FC<BookPageProps> = ({
 
       {/* Running Bottom Page Number */}
       <div
-        className={`h-6 text-[9pt] text-slate-500 font-sans flex items-center select-none pt-2 ${
+        className={`h-6 text-[9pt] font-sans flex items-center select-none pt-2 ${
           effectiveTypo.pageNumberPosition === 'bottom-center'
             ? 'justify-center'
             : isVerso
             ? 'justify-start'
             : 'justify-end'
         } ${effectiveTypo.pageNumberPosition === 'top-outside' || page.isBlankPage ? 'invisible' : 'visible'}`}
+        style={{ color: design?.headerFooterColor || '#64748b' }}
       >
         <span className="font-medium tracking-wider">{page.pageNumber}</span>
       </div>

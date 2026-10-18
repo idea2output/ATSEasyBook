@@ -116,6 +116,9 @@ export interface BookTemplate {
   name: string;
   category: 'fiction' | 'nonfiction' | 'illustrated' | 'magazine';
   description: string;
+  suitability?: string | string[]; // e.g. "Novels, Memoirs, Fiction" or ["Novels", "Memoirs"]
+  isCustom?: boolean; // true if created by user
+  design?: Partial<PageDesignSettings>; // default design settings for this template
   pageWidthInches: number;
   pageHeightInches: number;
   bleedInches: number;
@@ -128,6 +131,45 @@ export interface BookTemplate {
   // Budget parameters for pagination estimation
   linesPerPage: number;
   charsPerLine: number;
+}
+
+export type EditorMode = 'beginner' | 'expert';
+
+export type BackgroundImageSize = 'cover' | 'contain' | 'tile';
+export type BorderStyle = 'solid' | 'dashed' | 'dotted' | 'double' | 'none';
+
+export interface PageDesignSettings {
+  // Page Background
+  backgroundColor: string; // e.g. '#ffffff', '#fdfbf7'
+  backgroundImage?: string; // Data URL or asset path
+  backgroundImageUrl?: string; // Data URL or asset path
+  backgroundImageSize?: BackgroundImageSize;
+
+  // Page Border
+  borderEnabled: boolean;
+  borderColor: string;
+  borderWidthPt: number;
+  borderStyle: BorderStyle;
+  borderRadiusPt: number;
+  borderInsetInches: number; // distance from page edge inward
+
+  // Element Colors
+  textColor: string; // Body text color (e.g. '#0f172a')
+  headingColor: string; // Chapter heading text color (e.g. '#1e293b')
+  headerFooterColor: string; // Running header and page number color (e.g. '#64748b')
+}
+
+export type CustomFontFormat = 'ttf' | 'otf' | 'woff' | 'woff2';
+
+export interface CustomFont {
+  id: string;
+  familyName: string;
+  format: CustomFontFormat;
+  fileName: string;
+  fileSizeBytes: number;
+  dataUrl: string; // base64 Data URL
+  createdAt: string; // ISO 8601
+  canEmbedInPdf: boolean; // true for TTF/OTF
 }
 
 export interface TypographySettings {
@@ -151,13 +193,20 @@ export type PreflightSeverity = 'error' | 'warning';
 export interface PreflightIssue {
   id: string;
   severity: PreflightSeverity;
-  category: 'manuscript' | 'image' | 'geometry' | 'typography' | 'storage';
+  category: 'manuscript' | 'image' | 'geometry' | 'typography' | 'storage' | 'design' | 'font';
   title: string;
   description: string;
   pageNumber?: number;
   imageId?: string;
   placementId?: string;
-  actionType?: 'go-to-page' | 'select-image' | 'open-typography' | 'open-library' | 'open-blocks';
+  actionType?:
+    | 'go-to-page'
+    | 'select-image'
+    | 'open-typography'
+    | 'open-library'
+    | 'open-blocks'
+    | 'open-design'
+    | 'open-fonts';
   actionLabel?: string;
 }
 
@@ -183,6 +232,9 @@ export interface BookProject {
   author?: string;
   rawManuscript: string;
   templateId: string;
+  editorMode?: EditorMode; // 'beginner' (default) | 'expert'
+  design?: Partial<PageDesignSettings>; // visual design settings
+  customFonts?: CustomFont[]; // uploaded custom fonts
   formattedBlocks: ManuscriptBlock[];
   images: BookImage[];
   placements: ImagePlacement[];

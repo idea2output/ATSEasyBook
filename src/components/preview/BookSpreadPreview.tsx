@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { PagePreviewData, BookTemplate, TypographySettings } from '@/types/book';
+import { PagePreviewData, BookTemplate, PageDesignSettings, TypographySettings } from '@/types/book';
 import { BookPage } from './BookPage';
 import {
   ChevronLeft,
@@ -22,6 +22,7 @@ interface BookSpreadPreviewProps {
   bookTitle?: string;
   authorName?: string;
   typographyOverrides?: Partial<TypographySettings>;
+  design?: Partial<PageDesignSettings>;
   selectedPlacementId?: string | null;
   onSelectPlacement?: (placementId: string) => void;
 }
@@ -32,6 +33,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
   bookTitle,
   authorName,
   typographyOverrides,
+  design,
   selectedPlacementId = null,
   onSelectPlacement,
 }) => {
@@ -114,20 +116,6 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
     });
   };
 
-  if (pages.length === 0) {
-    return (
-      <div className="h-full min-h-[500px] flex flex-col items-center justify-center p-8 text-center bg-slate-100/70 border border-dashed border-slate-300 rounded-xl">
-        <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 mb-4 border border-slate-200">
-          <FileQuestion className="w-8 h-8" />
-        </div>
-        <h3 className="text-base font-bold text-slate-800">No Manuscript Content</h3>
-        <p className="mt-2 text-sm text-slate-500 max-w-sm">
-          Enter or paste your text in the manuscript editor, then click &ldquo;Format manuscript&rdquo; to flow text into 6 × 9-inch book pages.
-        </p>
-      </div>
-    );
-  }
-
   // Auto-navigate to spread/page containing selected image if reflow shifted it
   React.useEffect(() => {
     if (!selectedPlacementId) return;
@@ -149,6 +137,20 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
       setCurrentPageIndex(Math.max(0, Math.min(pages.length - 1, pageWithPlacement.pageNumber - 1)));
     }
   }, [selectedPlacementId, pages, spreads, viewMode]);
+
+  if (pages.length === 0) {
+    return (
+      <div className="h-full min-h-[500px] flex flex-col items-center justify-center p-8 text-center bg-slate-100/70 border border-dashed border-slate-300 rounded-xl">
+        <div className="w-16 h-16 rounded-full bg-white shadow-sm flex items-center justify-center text-slate-400 mb-4 border border-slate-200">
+          <FileQuestion className="w-8 h-8" />
+        </div>
+        <h3 className="text-base font-bold text-slate-800">No Manuscript Content</h3>
+        <p className="mt-2 text-sm text-slate-500 max-w-sm">
+          Enter or paste your text in the manuscript editor, then click &ldquo;Format manuscript&rdquo; to flow text into 6 × 9-inch book pages.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-slate-200/80 rounded-xl overflow-hidden border border-slate-300 shadow-inner">
@@ -314,6 +316,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 template={template}
                 authorName={authorName}
                 typographyOverrides={typographyOverrides}
+                design={design}
                 isPlaceholder={!activeSpread?.left}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={onSelectPlacement}
@@ -328,6 +331,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 template={template}
                 authorName={authorName}
                 typographyOverrides={typographyOverrides}
+                design={design}
                 isPlaceholder={!activeSpread?.right}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={onSelectPlacement}
@@ -341,6 +345,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 template={template}
                 authorName={authorName}
                 typographyOverrides={typographyOverrides}
+                design={design}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={onSelectPlacement}
               />

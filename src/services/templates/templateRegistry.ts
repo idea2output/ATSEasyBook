@@ -1,10 +1,26 @@
-import { BookTemplate, TypographySettings } from '@/types/book';
+import { BookTemplate, PageDesignSettings, TypographySettings } from '@/types/book';
+
+export const DEFAULT_PAGE_DESIGN: PageDesignSettings = {
+  backgroundColor: '#ffffff',
+  backgroundImageUrl: undefined,
+  backgroundImageSize: 'cover',
+  borderEnabled: false,
+  borderColor: '#cbd5e1',
+  borderWidthPt: 1,
+  borderStyle: 'solid',
+  borderRadiusPt: 0,
+  borderInsetInches: 0.35,
+  textColor: '#0f172a',
+  headingColor: '#1e293b',
+  headerFooterColor: '#64748b',
+};
 
 export const CLASSIC_NOVEL_6X9: BookTemplate = {
   id: 'classic-novel-6x9',
   name: 'Classic Novel, 6 × 9 inches',
   category: 'fiction',
   description: 'Traditional standard trade paperback format (6 × 9 in) with elegant serif typography, generous margins, and mirrored spreads.',
+  suitability: 'Novels, Memoirs, Literary Fiction',
   pageWidthInches: 6.0,
   pageHeightInches: 9.0,
   bleedInches: 0.125,
@@ -64,6 +80,7 @@ export const DIGEST_NOVEL_5_5X8_5: BookTemplate = {
   name: 'Digest Novel, 5.5 × 8.5 inches',
   category: 'fiction',
   description: 'Compact commercial fiction format (5.5 × 8.5 in) ideal for novellas, literary fiction, and pocket editions.',
+  suitability: 'Novellas, Short Stories, Poetry',
   pageWidthInches: 5.5,
   pageHeightInches: 8.5,
   bleedInches: 0.125,
@@ -123,6 +140,7 @@ export const STANDARD_PAPERBACK_6X9: BookTemplate = {
   name: 'Standard Paperback, 6 × 9 inches',
   category: 'fiction',
   description: 'Clean modern trade paperback format (6 × 9 in) with balanced proportions suitable for wide commercial distribution.',
+  suitability: 'Commercial Fiction, Thrillers, Sci-Fi',
   pageWidthInches: 6.0,
   pageHeightInches: 9.0,
   bleedInches: 0.125,
@@ -182,6 +200,7 @@ export const NONFICTION_6X9: BookTemplate = {
   name: 'Nonfiction, 6 × 9 inches',
   category: 'nonfiction',
   description: 'Authoritative nonfiction layout with clean sans-serif display headings, paragraph block spacing, and prominent chapter dividers.',
+  suitability: 'Nonfiction, Memoirs, Business, Academic',
   pageWidthInches: 6.0,
   pageHeightInches: 9.0,
   bleedInches: 0.125,
@@ -241,6 +260,7 @@ export const ILLUSTRATED_BOOK_8X10: BookTemplate = {
   name: 'Illustrated Book, 8 × 10 inches',
   category: 'illustrated',
   description: 'Expansive format (8 × 10 in) designed for art books, photography memoirs, children\'s books, and image-heavy narratives.',
+  suitability: 'Art Collections, Photography, Cookbooks',
   pageWidthInches: 8.0,
   pageHeightInches: 10.0,
   bleedInches: 0.125,
@@ -300,6 +320,7 @@ export const MAGAZINE_REPORT_A4: BookTemplate = {
   name: 'Magazine/Report, A4',
   category: 'magazine',
   description: 'International A4 format (8.27 × 11.69 in / 210 × 297 mm) with a dynamic two-column grid, ideal for periodicals, annual reports, and whitepapers.',
+  suitability: 'Annual Reports, Periodicals, Manuals',
   pageWidthInches: 8.27,
   pageHeightInches: 11.69,
   bleedInches: 0.125,

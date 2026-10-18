@@ -83,7 +83,22 @@ async function getCroppedDataUrl(
   });
 }
 
-function mapFontFamilyToPdfFont(family: string): { fontName: string; isSerif: boolean } {
+import { parseHexColor } from '@/services/preflight/preflightService';
+
+function mapFontFamilyToPdfFont(
+  family: string,
+  project?: BookProject
+): { fontName: string; isSerif: boolean } {
+  // Check if family references an embedded custom font
+  if (project?.customFonts) {
+    const customMatch = project.customFonts.find(
+      (cf) => cf.canEmbedInPdf && family.toLowerCase().includes(cf.familyName.toLowerCase())
+    );
+    if (customMatch) {
+      return { fontName: customMatch.familyName, isSerif: true };
+    }
+  }
+
   const lower = family.toLowerCase();
   if (
     lower.includes('inter') ||
@@ -174,14 +189,34 @@ export async function generatePrintPdf(
     compress: true,
   });
 
+  // Register custom embedded fonts into jsPDF VFS if available
+  if (project.customFonts && project.customFonts.length > 0) {
+    for (const cf of project.customFonts) {
+      if (cf.canEmbedInPdf && cf.dataUrl) {
+        try {
+          const raw = cf.dataUrl.split(',')[1] || cf.dataUrl;
+          const cleanBase64 = raw.replace(/\s+/g, '');
+          if (/^[A-Za-z0-9+/]+={0,2}$/.test(cleanBase64) && cleanBase64.length % 4 === 0) {
+            const fontFileName = `${cf.familyName.replace(/\s+/g, '_')}.ttf`;
+            doc.addFileToVFS(fontFileName, cleanBase64);
+            doc.addFont(fontFileName, cf.familyName, 'normal');
+          }
+        } catch (fontErr) {
+          console.warn(`Could not register custom font ${cf.familyName} in jsPDF:`, fontErr);
+        }
+      }
+    }
+  }
+
   // Set document properties
   doc.setProperties({
     title: project.title,
     author: effectiveTypo.authorName || 'Author',
-    creator: 'ATS EasyBook Print Engine (Phase 3)',
+    creator: 'ATS EasyBook Print Engine (Phase 4)',
   });
 
   const totalPagesCount = pages.length;
+  const design = project.design || template.design || {};
 
   for (let pIdx = 0; pIdx < totalPagesCount; pIdx++) {
     const page = pages[pIdx];
@@ -193,6 +228,63 @@ export async function generatePrintPdf(
 
     if (pIdx > 0) {
       doc.addPage([totalPageW, totalPageH], orientation);
+    }
+
+    // -------------------------------------------------------------
+    // Page Background Fill & Optional Background Image
+    // -------------------------------------------------------------
+    const fillX = originX - bleed;
+    const fillY = originY - bleed;
+    const fillW = trimW + bleed * 2;
+    const fillH = trimH + bleed * 2;
+
+    if (design.backgroundColor && design.backgroundColor.toLowerCase() !== '#ffffff') {
+      const bgRgb = parseHexColor(design.backgroundColor);
+      if (bgRgb) {
+        doc.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
+        doc.rect(fillX, fillY, fillW, fillH, 'F');
+      }
+    }
+
+    if (design.backgroundImage) {
+      try {
+        const bgFormat = design.backgroundImage.includes('png') ? 'PNG' : 'JPEG';
+        doc.addImage(design.backgroundImage, bgFormat, fillX, fillY, fillW, fillH);
+      } catch (bgImgErr) {
+        console.warn('Could not draw background image in PDF:', bgImgErr);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // Inset Decorative Border
+    // -------------------------------------------------------------
+    if (design.borderEnabled) {
+      const borderInset = design.borderInsetInches ?? 0.25;
+      const borderWidthPt = design.borderWidthPt ?? 1;
+      const borderX = originX + borderInset;
+      const borderY = originY + borderInset;
+      const borderW = trimW - borderInset * 2;
+      const borderH = trimH - borderInset * 2;
+
+      const borderRgb = parseHexColor(design.borderColor || '#000000') || { r: 0, g: 0, b: 0 };
+      doc.setDrawColor(borderRgb.r, borderRgb.g, borderRgb.b);
+      doc.setLineWidth(borderWidthPt / 72);
+
+      if (design.borderStyle === 'dashed') {
+        doc.setLineDashPattern([4 / 72, 2 / 72], 0);
+      } else if (design.borderStyle === 'dotted') {
+        doc.setLineDashPattern([1 / 72, 2 / 72], 0);
+      } else {
+        doc.setLineDashPattern([], 0);
+      }
+
+      if (design.borderRadiusPt && design.borderRadiusPt > 0) {
+        const rInches = design.borderRadiusPt / 72;
+        doc.roundedRect(borderX, borderY, borderW, borderH, rInches, rInches, 'S');
+      } else {
+        doc.rect(borderX, borderY, borderW, borderH, 'S');
+      }
+      doc.setLineDashPattern([], 0);
     }
 
     // Optional Crop Marks
@@ -225,6 +317,11 @@ export async function generatePrintPdf(
     const contentWidth = trimW - (marginLeft + marginRight);
     const contentHeight = trimH - (marginTop + marginBottom);
 
+    // Color definitions from design
+    const hfRgb = parseHexColor(design.headerFooterColor || '#5a5a5a') || { r: 90, g: 90, b: 90 };
+    const headRgb = parseHexColor(design.headingColor || '#141414') || { r: 20, g: 20, b: 20 };
+    const textRgb = parseHexColor(design.textColor || '#1e1e1e') || { r: 30, g: 30, b: 30 };
+
     // -------------------------------------------------------------
     // Running Header
     // -------------------------------------------------------------
@@ -232,7 +329,7 @@ export async function generatePrintPdf(
       const headerY = originY + marginTop * 0.65;
       doc.setFont('times', 'italic');
       doc.setFontSize(8.5);
-      doc.setTextColor(90, 90, 90);
+      doc.setTextColor(hfRgb.r, hfRgb.g, hfRgb.b);
 
       // Centered or split header
       doc.text(page.headerText, originX + trimW / 2, headerY, { align: 'center' });
@@ -245,7 +342,7 @@ export async function generatePrintPdf(
       const footerY = originY + trimH - marginBottom * 0.55;
       doc.setFont('times', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(70, 70, 70);
+      doc.setTextColor(hfRgb.r, hfRgb.g, hfRgb.b);
 
       const pos = effectiveTypo.pageNumberPosition;
       if (pos === 'bottom-center') {
@@ -284,10 +381,10 @@ export async function generatePrintPdf(
         const block = colBlocks[bIdx];
 
         if (block.type === 'chapter-heading') {
-          const headingFont = mapFontFamilyToPdfFont(effectiveTypo.headingFontFamily);
+          const headingFont = mapFontFamilyToPdfFont(effectiveTypo.headingFontFamily, project);
           doc.setFont(headingFont.fontName, 'bold');
           doc.setFontSize(effectiveTypo.headingFontSizePt);
-          doc.setTextColor(20, 20, 20);
+          doc.setTextColor(headRgb.r, headRgb.g, headRgb.b);
 
           currentCursorY += 0.25; // Space before heading
           const headingX =
@@ -303,10 +400,10 @@ export async function generatePrintPdf(
         }
 
         if (block.type === 'paragraph' && block.text) {
-          const bodyFont = mapFontFamilyToPdfFont(effectiveTypo.bodyFontFamily);
+          const bodyFont = mapFontFamilyToPdfFont(effectiveTypo.bodyFontFamily, project);
           doc.setFont(bodyFont.fontName, 'normal');
           doc.setFontSize(effectiveTypo.bodyFontSizePt);
-          doc.setTextColor(30, 30, 30);
+          doc.setTextColor(textRgb.r, textRgb.g, textRgb.b);
 
           const isAfterHeading = bIdx > 0 && colBlocks[bIdx - 1].type === 'chapter-heading';
           const isContinuation = block.isContinuation;

@@ -34,9 +34,9 @@ export const Navbar: React.FC<NavbarProps> = ({ currentBookTitle }) => {
         </div>
 
         <div className="flex items-center space-x-4">
-          <div className="hidden md:flex items-center space-x-1.5 px-3 py-1 bg-slate-100 text-slate-600 rounded-full text-xs font-medium border border-slate-200">
-            <Layers className="w-3.5 h-3.5 text-slate-500" />
-            <span>Phase 1 • 6×9 Publishing</span>
+          <div className="hidden md:flex items-center space-x-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-medium border border-indigo-200">
+            <Layers className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Professional Publishing Suite</span>
           </div>
 
           <Link

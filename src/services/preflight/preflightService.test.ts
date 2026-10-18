@@ -179,4 +179,60 @@ describe('preflightService', () => {
     const warn = summary.issues.find((i) => i.id.startsWith('warn-blank-page'));
     expect(warn).toBeDefined();
   });
+
+  it('flags a warning when text color has low contrast against background color (< 4.5:1)', () => {
+    const lowContrastProject: BookProject = {
+      ...baseProject,
+      design: {
+        backgroundColor: '#ffffff',
+        textColor: '#e2e8f0', // Very light grey on white (contrast ~1.2:1)
+      },
+    };
+    const summary = runPrintPreflight(lowContrastProject, CLASSIC_NOVEL_6X9, mockPages);
+    const contrastIssue = summary.issues.find((i) => i.id === 'warn-low-contrast');
+    expect(contrastIssue).toBeDefined();
+    expect(contrastIssue?.severity).toBe('warning');
+    expect(contrastIssue?.category).toBe('design');
+  });
+
+  it('flags a warning when decorative border is positioned too close to trim edge (< 0.125")', () => {
+    const borderNearTrimProject: BookProject = {
+      ...baseProject,
+      design: {
+        borderEnabled: true,
+        borderInsetInches: 0.05, // < 0.125" minimum safety margin
+      },
+    };
+    const summary = runPrintPreflight(borderNearTrimProject, CLASSIC_NOVEL_6X9, mockPages);
+    const borderIssue = summary.issues.find((i) => i.id === 'warn-border-near-trim');
+    expect(borderIssue).toBeDefined();
+    expect(borderIssue?.severity).toBe('warning');
+    expect(borderIssue?.category).toBe('design');
+  });
+
+  it('flags a warning when custom font cannot be embedded into PDF (WOFF/WOFF2)', () => {
+    const woffProject: BookProject = {
+      ...baseProject,
+      typography: {
+        bodyFontFamily: 'OpenSansWeb, sans-serif',
+      },
+      customFonts: [
+        {
+          id: 'cf-1',
+          familyName: 'OpenSansWeb',
+          format: 'woff2',
+          fileName: 'opensans.woff2',
+          fileSizeBytes: 45000,
+          dataUrl: 'data:font/woff2;base64,mock',
+          createdAt: new Date().toISOString(),
+          canEmbedInPdf: false,
+        },
+      ],
+    };
+    const summary = runPrintPreflight(woffProject, CLASSIC_NOVEL_6X9, mockPages);
+    const fontIssue = summary.issues.find((i) => i.id === 'warn-font-not-embeddable-cf-1');
+    expect(fontIssue).toBeDefined();
+    expect(fontIssue?.severity).toBe('warning');
+    expect(fontIssue?.category).toBe('font');
+  });
 });

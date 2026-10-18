@@ -39,6 +39,45 @@ export function calculateEffectiveImageDpi(
   return dpi;
 }
 
+export function parseHexColor(hex: string): { r: number; g: number; b: number } | null {
+  if (!hex) return null;
+  const clean = hex.replace('#', '').trim();
+  if (clean.length === 3) {
+    return {
+      r: parseInt(clean[0] + clean[0], 16),
+      g: parseInt(clean[1] + clean[1], 16),
+      b: parseInt(clean[2] + clean[2], 16),
+    };
+  }
+  if (clean.length === 6) {
+    return {
+      r: parseInt(clean.substring(0, 2), 16),
+      g: parseInt(clean.substring(2, 4), 16),
+      b: parseInt(clean.substring(4, 6), 16),
+    };
+  }
+  return null;
+}
+
+export function getRelativeLuminance(rgb: { r: number; g: number; b: number }): number {
+  const [r, g, b] = [rgb.r, rgb.g, rgb.b].map((val) => {
+    const s = val / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+export function calculateContrastRatio(hex1: string, hex2: string): number {
+  const rgb1 = parseHexColor(hex1);
+  const rgb2 = parseHexColor(hex2);
+  if (!rgb1 || !rgb2) return 21; // High contrast fallback
+  const l1 = getRelativeLuminance(rgb1);
+  const l2 = getRelativeLuminance(rgb2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 /**
  * Runs pre-flight print verification checks against book project, template, and paginated pages.
  */
@@ -256,6 +295,89 @@ export function runPrintPreflight(
       actionType: 'open-library',
       actionLabel: 'Optimize Images',
     });
+  }
+
+  // Warning 7: Low text contrast against page background (WCAG AA < 4.5:1)
+  if (project.design?.textColor && project.design?.backgroundColor) {
+    const ratio = calculateContrastRatio(project.design.textColor, project.design.backgroundColor);
+    if (ratio < 4.5) {
+      issues.push({
+        id: 'warn-low-contrast',
+        severity: 'warning',
+        category: 'design',
+        title: `Low text contrast against page background (${ratio.toFixed(1)}:1)`,
+        description: `The body text color (${project.design.textColor}) against page background (${project.design.backgroundColor}) has a contrast ratio of ${ratio.toFixed(1)}:1. Publishing standards recommend at least 4.5:1 for legibility.`,
+        actionType: 'open-design',
+        actionLabel: 'Adjust Colors',
+      });
+    }
+  }
+
+  // Warning 8: Border too close to trim / safe area
+  if (project.design?.borderEnabled) {
+    const inset = project.design.borderInsetInches ?? 0.35;
+    if (inset < template.safeAreaInches) {
+      issues.push({
+        id: 'warn-border-near-trim',
+        severity: 'warning',
+        category: 'design',
+        title: `Page border close to trim edge (${inset} in)`,
+        description: `The page border inset (${inset}") is within the template safe margin (${template.safeAreaInches}"). Borders placed too close to trim risk being shaved off or appearing uneven during bindery cuts.`,
+        actionType: 'open-design',
+        actionLabel: 'Adjust Border',
+      });
+    }
+  }
+
+  // Warning 9: Background image without template bleed
+  if (project.design?.backgroundImageUrl) {
+    if (template.bleedInches === 0) {
+      issues.push({
+        id: 'warn-bg-image-no-bleed',
+        severity: 'warning',
+        category: 'design',
+        title: 'Background image on template without trim bleed',
+        description: 'A page background image is active, but the selected template provides no bleed margin. Trimming variations may leave unprinted white slivers.',
+        actionType: 'open-design',
+        actionLabel: 'Inspect Background',
+      });
+    }
+  }
+
+  // Warning 10: Custom font format not directly embeddable in vector PDF
+  if (project.customFonts && project.customFonts.length > 0) {
+    for (const font of project.customFonts) {
+      if (!font.canEmbedInPdf) {
+        const isUsedInBody = effectiveTypo.bodyFontFamily.includes(font.familyName);
+        const isUsedInHeading = effectiveTypo.headingFontFamily.includes(font.familyName);
+        if (isUsedInBody || isUsedInHeading) {
+          issues.push({
+            id: `warn-font-not-embeddable-${font.id}`,
+            severity: 'warning',
+            category: 'font',
+            title: `Custom font "${font.familyName}" format (.${font.format}) cannot embed in vector PDF`,
+            description: `Web fonts in .${font.format} format cannot be embedded directly into print-ready PDF streams. Standard serif/sans fallback will be used in export. Upload .ttf or .otf for vector embedding.`,
+            actionType: 'open-fonts',
+            actionLabel: 'Manage Fonts',
+          });
+        }
+      }
+    }
+  }
+
+  // Error 6: Custom template geometry check
+  if (template.isCustom) {
+    if (template.pageWidthInches <= 0 || template.pageHeightInches <= 0) {
+      issues.push({
+        id: 'err-custom-template-geometry',
+        severity: 'error',
+        category: 'geometry',
+        title: 'Invalid custom template dimensions',
+        description: `Custom template trim dimensions must be positive values (current: ${template.pageWidthInches} × ${template.pageHeightInches} in).`,
+        actionType: 'open-typography',
+        actionLabel: 'Fix Template',
+      });
+    }
   }
 
   const errorsCount = issues.filter((i) => i.severity === 'error').length;

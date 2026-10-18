@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { BookTemplate, TypographySettings } from '@/types/book';
+import { BookTemplate, TypographySettings, CustomFont } from '@/types/book';
 import { getEffectiveTypography } from '@/services/templates/templateRegistry';
 import {
   Type,
@@ -18,11 +18,12 @@ interface TypographyPanelProps {
   template: BookTemplate;
   typographyOverrides?: Partial<TypographySettings>;
   authorName?: string;
+  customFonts?: CustomFont[];
   onUpdateTypography: (updated: Partial<TypographySettings>) => void;
   onResetTypography: () => void;
 }
 
-const FONT_OPTIONS = [
+const BUILTIN_FONT_OPTIONS = [
   { name: 'Georgia (Classic Editorial)', value: 'Georgia, Cambria, "Times New Roman", serif' },
   { name: 'Garamond (Literary Standard)', value: 'Garamond, "EB Garamond", Georgia, serif' },
   { name: 'Times New Roman (Trade Traditional)', value: '"Times New Roman", Times, Georgia, serif' },
@@ -35,10 +36,18 @@ export const TypographyPanel: React.FC<TypographyPanelProps> = ({
   template,
   typographyOverrides,
   authorName = '',
+  customFonts = [],
   onUpdateTypography,
   onResetTypography,
 }) => {
   const current = getEffectiveTypography(template, typographyOverrides, authorName);
+
+  const customFontOptions = customFonts.map((cf) => ({
+    name: `Custom: ${cf.familyName} (${cf.format.toUpperCase()})`,
+    value: `'${cf.familyName}', serif`,
+  }));
+
+  const fontOptions = [...customFontOptions, ...BUILTIN_FONT_OPTIONS];
 
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
@@ -85,7 +94,7 @@ export const TypographyPanel: React.FC<TypographyPanelProps> = ({
                 onChange={(e) => onUpdateTypography({ bodyFontFamily: e.target.value })}
                 className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
-                {FONT_OPTIONS.map((f) => (
+                {fontOptions.map((f) => (
                   <option key={f.value} value={f.value}>
                     {f.name}
                   </option>
@@ -213,6 +222,24 @@ export const TypographyPanel: React.FC<TypographyPanelProps> = ({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
+              <label htmlFor="heading-font-select" className="block text-xs font-semibold text-slate-700 mb-1">
+                Heading Typeface
+              </label>
+              <select
+                id="heading-font-select"
+                value={current.headingFontFamily}
+                onChange={(e) => onUpdateTypography({ headingFontFamily: e.target.value })}
+                className="w-full text-xs bg-white border border-slate-300 rounded-lg p-2 font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {fontOptions.map((f) => (
+                  <option key={f.value} value={f.value}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label htmlFor="chapter-opening-select" className="block text-xs font-semibold text-slate-700 mb-1">
                 Chapter Opening Page
               </label>
@@ -228,19 +255,19 @@ export const TypographyPanel: React.FC<TypographyPanelProps> = ({
                 <option value="recto-only">Start on Right Page (Recto-Only with Blank Leaf)</option>
               </select>
             </div>
+          </div>
 
-            <div className="flex items-center space-x-3 pt-6">
-              <input
-                id="suppress-chapter-header"
-                type="checkbox"
-                checked={current.suppressChapterHeader}
-                onChange={(e) => onUpdateTypography({ suppressChapterHeader: e.target.checked })}
-                className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <label htmlFor="suppress-chapter-header" className="text-xs font-medium text-slate-700 cursor-pointer">
-                Suppress running header on chapter opening page
-              </label>
-            </div>
+          <div className="flex items-center space-x-3 pt-2">
+            <input
+              id="suppress-chapter-header"
+              type="checkbox"
+              checked={current.suppressChapterHeader}
+              onChange={(e) => onUpdateTypography({ suppressChapterHeader: e.target.checked })}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="suppress-chapter-header" className="text-xs font-medium text-slate-700 cursor-pointer">
+              Suppress running header on chapter opening page
+            </label>
           </div>
         </div>
 

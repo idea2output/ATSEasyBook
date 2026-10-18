@@ -1,4 +1,4 @@
-import { BookProject } from '@/types/book';
+import { BookProject, EditorMode } from '@/types/book';
 import { parseManuscript } from '../formatting/manuscriptParser';
 
 export interface IBookRepository {
@@ -7,7 +7,12 @@ export interface IBookRepository {
   saveBook(book: BookProject): Promise<BookProject>;
   saveBookSync(book: BookProject): BookProject;
   deleteBook(id: string): Promise<void>;
-  createBook(title?: string): Promise<BookProject>;
+  createBook(
+    title?: string,
+    author?: string,
+    templateId?: string,
+    editorMode?: EditorMode
+  ): Promise<BookProject>;
   getOrCreateSampleBook(): Promise<BookProject>;
 }
 
@@ -38,10 +43,13 @@ export class LocalStorageBookRepository implements IBookRepository {
       const data = window.localStorage.getItem(STORAGE_KEY);
       if (!data) return [];
       const rawBooks = JSON.parse(data) as any[];
-      // Safe backward compatibility migration: default missing Phase 2 & Phase 3 fields
+      // Safe backward compatibility migration: default missing Phase 2, 3, & 4 fields
       return rawBooks.map((b) => ({
         ...b,
         author: b.author || '',
+        editorMode: (b.editorMode as EditorMode) || 'beginner',
+        design: b.design || {},
+        customFonts: Array.isArray(b.customFonts) ? b.customFonts : [],
         images: Array.isArray(b.images) ? b.images : [],
         placements: Array.isArray(b.placements) ? b.placements : [],
         typography: b.typography || {},
@@ -100,6 +108,9 @@ export class LocalStorageBookRepository implements IBookRepository {
     const updatedBook: BookProject = {
       ...book,
       author: book.author || '',
+      editorMode: (book.editorMode as EditorMode) || 'beginner',
+      design: book.design || {},
+      customFonts: Array.isArray(book.customFonts) ? book.customFonts : [],
       images: Array.isArray(book.images) ? book.images : [],
       placements: Array.isArray(book.placements) ? book.placements : [],
       typography: book.typography || {},
@@ -129,7 +140,12 @@ export class LocalStorageBookRepository implements IBookRepository {
     this.saveStoredBooks(filtered);
   }
 
-  async createBook(title: string = 'Untitled Manuscript', author: string = 'Anonymous'): Promise<BookProject> {
+  async createBook(
+    title: string = 'Untitled Manuscript',
+    author: string = 'Anonymous',
+    templateId: string = 'classic-novel-6x9',
+    editorMode: EditorMode = 'beginner'
+  ): Promise<BookProject> {
     const now = new Date().toISOString();
     const id = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
@@ -138,7 +154,10 @@ export class LocalStorageBookRepository implements IBookRepository {
       title: title || 'Untitled Manuscript',
       author: author || 'Anonymous',
       rawManuscript: '',
-      templateId: 'classic-novel-6x9',
+      templateId: templateId || 'classic-novel-6x9',
+      editorMode: editorMode || 'beginner',
+      design: {},
+      customFonts: [],
       formattedBlocks: [],
       images: [],
       placements: [],
@@ -171,6 +190,9 @@ export class LocalStorageBookRepository implements IBookRepository {
       author: 'Amjad Vance',
       rawManuscript: SAMPLE_MANUSCRIPT,
       templateId: 'classic-novel-6x9',
+      editorMode: 'beginner',
+      design: {},
+      customFonts: [],
       formattedBlocks: parseManuscript(SAMPLE_MANUSCRIPT),
       images: [],
       placements: [],

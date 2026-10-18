@@ -15,6 +15,7 @@ import { parseManuscript } from '@/services/formatting/manuscriptParser';
 import { defaultPaginationEngine } from '@/services/pagination/paginationEngine';
 import { getTemplateById } from '@/services/templates/templateRegistry';
 import { runPrintPreflight } from '@/services/preflight/preflightService';
+import { loadFontFaceInBrowser } from '@/services/fonts/fontService';
 import { Navbar } from '@/components/common/Navbar';
 import { ManuscriptEditor, EditorTabType } from '@/components/editor/ManuscriptEditor';
 import { BookSpreadPreview } from '@/components/preview/BookSpreadPreview';
@@ -30,6 +31,7 @@ import {
   Download,
   CheckCircle2,
   AlertTriangle,
+  Sliders,
 } from 'lucide-react';
 
 export default function BookEditorPage() {
@@ -122,6 +124,15 @@ export default function BookEditorPage() {
     bookRef.current = book;
   }, [book]);
 
+  // Automatically register any uploaded custom fonts in the browser DOM
+  useEffect(() => {
+    if (book?.customFonts && book.customFonts.length > 0) {
+      book.customFonts.forEach((cf) => {
+        loadFontFaceInBrowser(cf);
+      });
+    }
+  }, [book?.customFonts]);
+
   // Recalculate pagination whenever manuscript blocks, images, placements, or typography change
   const refreshPagination = useCallback((currentBook: BookProject) => {
     const template = getTemplateById(currentBook.templateId);
@@ -211,40 +222,38 @@ export default function BookEditorPage() {
   // Update book state and schedule autosave
   const handleUpdateBook = useCallback(
     (updatedFields: Partial<BookProject>) => {
-      setBook((prev) => {
-        if (!prev) return null;
-        const updated = { ...prev, ...updatedFields };
+      const current = bookRef.current;
+      if (!current) return;
+      const updated = { ...current, ...updatedFields };
 
-        bookRef.current = updated;
-        hasUnsavedChangesRef.current = true;
-        setHasUnsavedChanges(true);
+      bookRef.current = updated;
+      setBook(updated);
+      hasUnsavedChangesRef.current = true;
+      setHasUnsavedChanges(true);
 
-        // Real-time pagination update
-        refreshPagination(updated);
+      // Real-time pagination update
+      refreshPagination(updated);
 
-        // Schedule autosave after 600ms debounce
-        if (autosaveTimerRef.current) {
-          clearTimeout(autosaveTimerRef.current);
-        }
-        autosaveTimerRef.current = setTimeout(() => {
-          setIsSaving(true);
-          try {
-            if (bookRef.current) {
-              const saved = bookRepository.saveBookSync(bookRef.current);
-              bookRef.current = saved;
-              hasUnsavedChangesRef.current = false;
-              setHasUnsavedChanges(false);
-              setLastSavedAt(new Date(saved.updatedAt));
-            }
-          } catch (e) {
-            console.error('Autosave failed:', e);
-          } finally {
-            setIsSaving(false);
+      // Schedule autosave after 600ms debounce
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
+      autosaveTimerRef.current = setTimeout(() => {
+        setIsSaving(true);
+        try {
+          if (bookRef.current) {
+            const saved = bookRepository.saveBookSync(bookRef.current);
+            bookRef.current = saved;
+            hasUnsavedChangesRef.current = false;
+            setHasUnsavedChanges(false);
+            setLastSavedAt(new Date(saved.updatedAt));
           }
-        }, 600);
-
-        return updated;
-      });
+        } catch (e) {
+          console.error('Autosave failed:', e);
+        } finally {
+          setIsSaving(false);
+        }
+      }, 600);
     },
     [refreshPagination]
   );
@@ -378,6 +387,29 @@ export default function BookEditorPage() {
 
         {/* Right Toolbar Actions */}
         <div className="flex items-center space-x-2.5">
+          {/* Mode Toggle (Beginner / Expert) */}
+          <button
+            type="button"
+            id="toggle-editor-mode-btn"
+            onClick={() => {
+              const nextMode = book.editorMode === 'expert' ? 'beginner' : 'expert';
+              handleUpdateBook({ editorMode: nextMode });
+            }}
+            className={`inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+              book.editorMode === 'expert'
+                ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+            }`}
+            title={
+              book.editorMode === 'expert'
+                ? 'Expert Mode Active (Visual design, custom fonts, reusable templates). Click to switch to Beginner Mode.'
+                : 'Beginner Mode Active. Click to unlock Expert visual styling, custom fonts, and templates.'
+            }
+          >
+            <Sliders className="w-3.5 h-3.5 text-purple-600" />
+            <span>{book.editorMode === 'expert' ? 'Expert Mode' : 'Beginner Mode'}</span>
+          </button>
+
           {/* Preflight & PDF Export Button */}
           <button
             type="button"
@@ -527,6 +559,7 @@ export default function BookEditorPage() {
                 bookTitle={book.title}
                 authorName={book.author}
                 typographyOverrides={book.typography}
+                design={book.design || currentTemplate.design}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={setSelectedPlacementId}
               />

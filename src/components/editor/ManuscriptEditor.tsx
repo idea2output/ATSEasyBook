@@ -10,12 +10,17 @@ import {
   PreflightSummary,
   PreflightIssue,
   TypographySettings,
+  PageDesignSettings,
+  CustomFont,
 } from '@/types/book';
-import { AVAILABLE_TEMPLATES } from '@/services/templates/templateRegistry';
+import { templateRepository } from '@/services/templates/templateRepository';
 import { createDefaultPlacement } from '@/services/images/imageService';
 import { ImageLibrary } from '@/components/images/ImageLibrary';
 import { TypographyPanel } from '@/components/typography/TypographyPanel';
 import { PreflightPanel } from '@/components/preflight/PreflightPanel';
+import { DesignPanel } from '@/components/design/DesignPanel';
+import { FontManagerPanel } from '@/components/fonts/FontManagerPanel';
+import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
 import {
   Save,
   Check,
@@ -31,9 +36,18 @@ import {
   Trash2,
   Sparkles,
   User,
+  Palette,
+  Bookmark,
 } from 'lucide-react';
 
-export type EditorTabType = 'raw' | 'blocks' | 'images' | 'typography' | 'preflight';
+export type EditorTabType =
+  | 'raw'
+  | 'blocks'
+  | 'images'
+  | 'typography'
+  | 'design'
+  | 'fonts'
+  | 'preflight';
 
 interface ManuscriptEditorProps {
   book: BookProject;
@@ -77,8 +91,15 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   onTabChange,
 }) => {
   const [internalTab, setInternalTab] = useState<EditorTabType>('raw');
-  const activeTab = controlledTab || internalTab;
+  const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState<boolean>(false);
+  const isExpert = book.editorMode === 'expert';
+  const rawActiveTab = controlledTab || internalTab;
+  const activeTab = !isExpert && (rawActiveTab === 'design' || rawActiveTab === 'fonts')
+    ? 'typography'
+    : rawActiveTab;
   const setActiveTab = onTabChange || setInternalTab;
+
+  const allTemplates = templateRepository.getAllTemplatesSync();
 
   const [showFormattingTips, setShowFormattingTips] = useState<boolean>(false);
   const [insertDropdownBlockId, setInsertDropdownBlockId] = useState<string | null>(null);
@@ -225,12 +246,25 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               onChange={(e) => onUpdateBook({ templateId: e.target.value })}
               className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
-              {AVAILABLE_TEMPLATES.map((tmpl) => (
+              {allTemplates.map((tmpl) => (
                 <option key={tmpl.id} value={tmpl.id}>
-                  {tmpl.name} ({tmpl.pageWidthInches}&quot; × {tmpl.pageHeightInches}&quot;)
+                  {tmpl.name} {tmpl.isCustom ? '• Custom ' : ''}({tmpl.pageWidthInches}&quot; × {tmpl.pageHeightInches}&quot;)
                 </option>
               ))}
             </select>
+
+            {isExpert && (
+              <button
+                type="button"
+                id="save-as-template-btn"
+                onClick={() => setIsSaveTemplateModalOpen(true)}
+                className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-semibold transition-colors"
+                title="Save current layout as a reusable template"
+              >
+                <Bookmark className="w-3.5 h-3.5" />
+                <span>Save as Template</span>
+              </button>
+            )}
           </div>
 
           <div className="flex items-center space-x-2">
@@ -338,9 +372,46 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             <span>Typography</span>
           </button>
 
+          {isExpert && (
+            <button
+              type="button"
+              role="tab"
+              id="tab-design"
+              aria-selected={activeTab === 'design'}
+              onClick={() => setActiveTab('design')}
+              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
+                activeTab === 'design'
+                  ? 'border-purple-600 text-purple-600 bg-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Palette className="w-3.5 h-3.5 text-purple-600" />
+              <span>Design</span>
+            </button>
+          )}
+
+          {isExpert && (
+            <button
+              type="button"
+              role="tab"
+              id="tab-fonts"
+              aria-selected={activeTab === 'fonts'}
+              onClick={() => setActiveTab('fonts')}
+              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
+                activeTab === 'fonts'
+                  ? 'border-purple-600 text-purple-600 bg-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Type className="w-3.5 h-3.5 text-purple-600" />
+              <span>Fonts ({book.customFonts?.length || 0})</span>
+            </button>
+          )}
+
           <button
             type="button"
             role="tab"
+            id="tab-preflight"
             aria-selected={activeTab === 'preflight'}
             onClick={() => setActiveTab('preflight')}
             className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
@@ -554,8 +625,31 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
             template={template}
             typographyOverrides={book.typography}
             authorName={book.author}
+            customFonts={book.customFonts || []}
             onUpdateTypography={handleUpdateTypography}
             onResetTypography={handleResetTypography}
+          />
+        )}
+
+        {activeTab === 'design' && (
+          <DesignPanel
+            design={book.design || template.design}
+            onUpdateDesign={(d) => onUpdateBook({ design: d })}
+            onResetDesign={() => onUpdateBook({ design: {} })}
+          />
+        )}
+
+        {activeTab === 'fonts' && (
+          <FontManagerPanel
+            fonts={book.customFonts || []}
+            onAddFont={(f) =>
+              onUpdateBook({ customFonts: [...(book.customFonts || []), f] })
+            }
+            onRemoveFont={(fId) =>
+              onUpdateBook({
+                customFonts: (book.customFonts || []).filter((f) => f.id !== fId),
+              })
+            }
           />
         )}
 
@@ -569,6 +663,18 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
           />
         )}
       </div>
+
+      {isSaveTemplateModalOpen && (
+        <SaveTemplateModal
+          isOpen={isSaveTemplateModalOpen}
+          onClose={() => setIsSaveTemplateModalOpen(false)}
+          project={book}
+          baseTemplate={template}
+          onSaved={(newTmpl) => {
+            onUpdateBook({ templateId: newTmpl.id });
+          }}
+        />
+      )}
     </div>
   );
 };

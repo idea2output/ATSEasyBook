@@ -89,21 +89,11 @@ export default function DashboardPage() {
 
             <button
               type="button"
-              onClick={() => handleCreateNewBook(false)}
-              disabled={isCreating}
-              className="inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              onClick={() => router.push('/books/new')}
+              className="inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
-              {isCreating ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Creating...</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4" />
-                  <span>Create new book</span>
-                </>
-              )}
+              <Plus className="w-4 h-4" />
+              <span>Create new book</span>
             </button>
           </div>
         </div>
@@ -141,7 +131,7 @@ export default function DashboardPage() {
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
                 type="button"
-                onClick={() => handleCreateNewBook(false)}
+                onClick={() => router.push('/books/new')}
                 className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition-colors"
               >
                 <Plus className="w-4 h-4" />
