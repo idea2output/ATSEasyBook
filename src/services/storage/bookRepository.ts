@@ -37,7 +37,16 @@ export class LocalStorageBookRepository implements IBookRepository {
     try {
       const data = window.localStorage.getItem(STORAGE_KEY);
       if (!data) return [];
-      return JSON.parse(data) as BookProject[];
+      const rawBooks = JSON.parse(data) as any[];
+      // Safe backward compatibility migration: default missing Phase 2 fields
+      return rawBooks.map((b) => ({
+        ...b,
+        images: Array.isArray(b.images) ? b.images : [],
+        placements: Array.isArray(b.placements) ? b.placements : [],
+        formattedBlocks: Array.isArray(b.formattedBlocks)
+          ? b.formattedBlocks
+          : parseManuscript(b.rawManuscript || ''),
+      })) as BookProject[];
     } catch (err) {
       console.error('Failed to parse books from localStorage', err);
       return [];
@@ -69,8 +78,10 @@ export class LocalStorageBookRepository implements IBookRepository {
     const books = this.getStoredBooks();
     const updatedBook: BookProject = {
       ...book,
+      images: Array.isArray(book.images) ? book.images : [],
+      placements: Array.isArray(book.placements) ? book.placements : [],
       updatedAt: new Date().toISOString(),
-      formattedBlocks: parseManuscript(book.rawManuscript),
+      formattedBlocks: parseManuscript(book.rawManuscript || ''),
     };
 
     const index = books.findIndex((b) => b.id === book.id);
@@ -104,6 +115,8 @@ export class LocalStorageBookRepository implements IBookRepository {
       rawManuscript: '',
       templateId: 'classic-novel-6x9',
       formattedBlocks: [],
+      images: [],
+      placements: [],
       createdAt: now,
       updatedAt: now,
     };
@@ -131,6 +144,8 @@ export class LocalStorageBookRepository implements IBookRepository {
       rawManuscript: SAMPLE_MANUSCRIPT,
       templateId: 'classic-novel-6x9',
       formattedBlocks: parseManuscript(SAMPLE_MANUSCRIPT),
+      images: [],
+      placements: [],
       isSample: true,
       createdAt: now,
       updatedAt: now,

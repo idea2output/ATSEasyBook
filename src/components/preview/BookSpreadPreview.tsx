@@ -20,12 +20,16 @@ interface BookSpreadPreviewProps {
   pages: PagePreviewData[];
   template: BookTemplate;
   bookTitle?: string;
+  selectedPlacementId?: string | null;
+  onSelectPlacement?: (placementId: string) => void;
 }
 
 export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
   pages,
   template,
   bookTitle,
+  selectedPlacementId = null,
+  onSelectPlacement,
 }) => {
   const [zoomScale, setZoomScale] = useState<number>(0.75); // Good desktop default scale for 6x9 in
   const [viewMode, setViewMode] = useState<'spread' | 'single'>('spread');
@@ -119,6 +123,28 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
       </div>
     );
   }
+
+  // Auto-navigate to spread/page containing selected image if reflow shifted it
+  React.useEffect(() => {
+    if (!selectedPlacementId) return;
+    const pageWithPlacement = pages.find((p) =>
+      p.blocks.some((b) => b.type === 'image' && b.placement?.id === selectedPlacementId)
+    );
+    if (!pageWithPlacement) return;
+
+    if (viewMode === 'spread') {
+      const targetSpread = spreads.findIndex(
+        (s) =>
+          s.left?.pageNumber === pageWithPlacement.pageNumber ||
+          s.right?.pageNumber === pageWithPlacement.pageNumber
+      );
+      if (targetSpread !== -1) {
+        setCurrentSpreadIndex(targetSpread);
+      }
+    } else {
+      setCurrentPageIndex(Math.max(0, Math.min(pages.length - 1, pageWithPlacement.pageNumber - 1)));
+    }
+  }, [selectedPlacementId, pages, spreads, viewMode]);
 
   return (
     <div className="flex flex-col h-full bg-slate-200/80 rounded-xl overflow-hidden border border-slate-300 shadow-inner">
@@ -283,6 +309,8 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 page={activeSpread?.left}
                 template={template}
                 isPlaceholder={!activeSpread?.left}
+                selectedPlacementId={selectedPlacementId}
+                onSelectPlacement={onSelectPlacement}
               />
 
               {/* Book Spine Center Divider */}
@@ -293,12 +321,19 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 page={activeSpread?.right}
                 template={template}
                 isPlaceholder={!activeSpread?.right}
+                selectedPlacementId={selectedPlacementId}
+                onSelectPlacement={onSelectPlacement}
               />
             </div>
           ) : (
             /* Single Page */
             <div className="flex items-center justify-center shadow-2xl rounded-sm">
-              <BookPage page={activeSinglePage} template={template} />
+              <BookPage
+                page={activeSinglePage}
+                template={template}
+                selectedPlacementId={selectedPlacementId}
+                onSelectPlacement={onSelectPlacement}
+              />
             </div>
           )}
         </div>

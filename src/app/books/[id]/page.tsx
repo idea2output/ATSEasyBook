@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookProject, PagePreviewData } from '@/types/book';
+import { BookProject, PagePreviewData, ImagePlacement } from '@/types/book';
 import { bookRepository } from '@/services/storage/bookRepository';
 import { parseManuscript } from '@/services/formatting/manuscriptParser';
 import { defaultPaginationEngine } from '@/services/pagination/paginationEngine';
@@ -11,6 +11,7 @@ import { getTemplateById } from '@/services/templates/templateRegistry';
 import { Navbar } from '@/components/common/Navbar';
 import { ManuscriptEditor } from '@/components/editor/ManuscriptEditor';
 import { BookSpreadPreview } from '@/components/preview/BookSpreadPreview';
+import { ImageInspector } from '@/components/images/ImageInspector';
 import {
   ArrowLeft,
   Loader2,
@@ -62,6 +63,8 @@ export default function BookEditorPage() {
             : parseManuscript(existing.rawManuscript);
           const paginated = defaultPaginationEngine.paginate(blocks, template, {
             bookTitle: existing.title,
+            images: existing.images,
+            placements: existing.placements,
           });
           setPages(paginated);
           setLastSavedAt(new Date(existing.updatedAt));
@@ -93,17 +96,20 @@ export default function BookEditorPage() {
   // Keep refs for unmount and beforeunload synchronous flushing
   const bookRef = useRef<BookProject | null>(book);
   const hasUnsavedChangesRef = useRef<boolean>(false);
+  const [selectedPlacementId, setSelectedPlacementId] = useState<string | null>(null);
 
   useEffect(() => {
     bookRef.current = book;
   }, [book]);
 
-  // Recalculate pagination whenever manuscript blocks or template changes
+  // Recalculate pagination whenever manuscript blocks, images, or placements change
   const refreshPagination = useCallback((currentBook: BookProject) => {
     const template = getTemplateById(currentBook.templateId);
     const blocks = parseManuscript(currentBook.rawManuscript);
     const paginated = defaultPaginationEngine.paginate(blocks, template, {
       bookTitle: currentBook.title,
+      images: currentBook.images,
+      placements: currentBook.placements,
     });
     setPages(paginated);
   }, []);
@@ -201,6 +207,31 @@ export default function BookEditorPage() {
     [refreshPagination]
   );
 
+  // Update individual image placement
+  const handleUpdatePlacement = useCallback(
+    (placementId: string, updates: Partial<ImagePlacement>) => {
+      if (!bookRef.current) return;
+      const updatedPlacements = (bookRef.current.placements || []).map((p) =>
+        p.id === placementId ? { ...p, ...updates } : p
+      );
+      handleUpdateBook({ placements: updatedPlacements });
+    },
+    [handleUpdateBook]
+  );
+
+  // Remove placement while preserving image in library
+  const handleRemovePlacement = useCallback(
+    (placementId: string) => {
+      if (!bookRef.current) return;
+      const updatedPlacements = (bookRef.current.placements || []).filter((p) => p.id !== placementId);
+      if (selectedPlacementId === placementId) {
+        setSelectedPlacementId(null);
+      }
+      handleUpdateBook({ placements: updatedPlacements });
+    },
+    [handleUpdateBook, selectedPlacementId]
+  );
+
   // Explicit Format Action
   const handleFormatManuscript = useCallback(() => {
     if (!bookRef.current) return;
@@ -252,6 +283,8 @@ export default function BookEditorPage() {
   }
 
   const currentTemplate = getTemplateById(book.templateId);
+
+  const selectedPlacement = (book?.placements || []).find((p) => p.id === selectedPlacementId) || null;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-100/90 text-slate-900">
@@ -331,28 +364,44 @@ export default function BookEditorPage() {
           {/* Manuscript Editor Column */}
           {(layoutMode === 'split' || layoutMode === 'editor-only') && (
             <div
-              className={`h-full overflow-hidden ${
+              className={`h-full overflow-hidden flex flex-col ${
                 layoutMode === 'editor-only'
                   ? 'lg:col-span-12 max-w-4xl mx-auto w-full'
                   : 'lg:col-span-5'
               }`}
             >
-              <ManuscriptEditor
-                book={book}
-                onUpdateBook={handleUpdateBook}
-                onFormatManuscript={handleFormatManuscript}
-                onSave={handleSave}
-                isSaving={isSaving}
-                hasUnsavedChanges={hasUnsavedChanges}
-                lastSavedAt={lastSavedAt}
-              />
+              {selectedPlacement && (
+                <div className="mb-4 shrink-0">
+                  <ImageInspector
+                    placement={selectedPlacement}
+                    images={book.images || []}
+                    onUpdatePlacement={handleUpdatePlacement}
+                    onRemovePlacement={handleRemovePlacement}
+                    onClose={() => setSelectedPlacementId(null)}
+                  />
+                </div>
+              )}
+
+              <div className="flex-1 overflow-hidden">
+                <ManuscriptEditor
+                  book={book}
+                  onUpdateBook={handleUpdateBook}
+                  onFormatManuscript={handleFormatManuscript}
+                  onSave={handleSave}
+                  isSaving={isSaving}
+                  hasUnsavedChanges={hasUnsavedChanges}
+                  lastSavedAt={lastSavedAt}
+                  selectedPlacementId={selectedPlacementId}
+                  onSelectPlacement={setSelectedPlacementId}
+                />
+              </div>
             </div>
           )}
 
           {/* Book Preview Column */}
           {(layoutMode === 'split' || layoutMode === 'preview-only') && (
             <div
-              className={`h-full overflow-hidden ${
+              className={`h-full overflow-hidden relative ${
                 layoutMode === 'preview-only' ? 'lg:col-span-12' : 'lg:col-span-7'
               }`}
             >
@@ -360,7 +409,22 @@ export default function BookEditorPage() {
                 pages={pages}
                 template={currentTemplate}
                 bookTitle={book.title}
+                selectedPlacementId={selectedPlacementId}
+                onSelectPlacement={setSelectedPlacementId}
               />
+
+              {/* Floating Inspector in Preview-Only mode */}
+              {selectedPlacement && layoutMode === 'preview-only' && (
+                <div className="fixed bottom-8 right-8 w-96 max-w-[90vw] z-50 shadow-2xl">
+                  <ImageInspector
+                    placement={selectedPlacement}
+                    images={book.images || []}
+                    onUpdatePlacement={handleUpdatePlacement}
+                    onRemovePlacement={handleRemovePlacement}
+                    onClose={() => setSelectedPlacementId(null)}
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
