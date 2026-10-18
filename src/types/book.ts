@@ -188,12 +188,37 @@ export interface TypographySettings {
   runningHeaderContent: 'title-chapter' | 'author-title' | 'none';
 }
 
+export type StandardCmykProfileId = 'fogra39' | 'fogra51' | 'gracol' | 'custom';
+
+export interface CmykOutputProfileMetadata {
+  id: StandardCmykProfileId | string;
+  name: string;
+  conditionIdentifier: string; // e.g. "FOGRA39", "FOGRA51", "CGATS TR 006"
+  registryName: string; // e.g. "http://www.color.org"
+  standard: string; // e.g. "ISO 12647-2:2004", "ISO 12647-2:2013"
+  description: string;
+  maxTacPercent: number; // e.g. 300, 320
+  iccDataUrl?: string; // base64 Data URL for custom or embedded profile
+  isCustom?: boolean;
+}
+
+export type BlackHandlingMode = 'standard-text' | 'rich-black-preset';
+
+export interface PrintColorSettings {
+  outputProfileId: StandardCmykProfileId | string;
+  customProfile?: CmykOutputProfileMetadata;
+  blackHandling: BlackHandlingMode; // 'standard-text' (C0 M0 Y0 K100) | 'rich-black-preset'
+  overprintBlackText: boolean; // default true
+  overprintBlackRules: boolean; // default true
+  maxTacPercent?: number; // configured total ink limit
+}
+
 export type PreflightSeverity = 'error' | 'warning';
 
 export interface PreflightIssue {
   id: string;
   severity: PreflightSeverity;
-  category: 'manuscript' | 'image' | 'geometry' | 'typography' | 'storage' | 'design' | 'font';
+  category: 'manuscript' | 'image' | 'geometry' | 'typography' | 'storage' | 'design' | 'font' | 'color';
   title: string;
   description: string;
   pageNumber?: number;
@@ -206,7 +231,8 @@ export interface PreflightIssue {
     | 'open-library'
     | 'open-blocks'
     | 'open-design'
-    | 'open-fonts';
+    | 'open-fonts'
+    | 'open-color';
   actionLabel?: string;
 }
 
@@ -224,6 +250,7 @@ export interface PdfExportOptions {
   includeBleed: boolean;
   includeCropMarks: boolean;
   acknowledgedWarnings: boolean;
+  colorManagement?: PrintColorSettings;
 }
 
 export interface BookProject {
@@ -235,6 +262,7 @@ export interface BookProject {
   editorMode?: EditorMode; // 'beginner' (default) | 'expert'
   design?: Partial<PageDesignSettings>; // visual design settings
   customFonts?: CustomFont[]; // uploaded custom fonts
+  colorSettings?: Partial<PrintColorSettings>; // CMYK prepress and color settings
   formattedBlocks: ManuscriptBlock[];
   images: BookImage[];
   placements: ImagePlacement[];

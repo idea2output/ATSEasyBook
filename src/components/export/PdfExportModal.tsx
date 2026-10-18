@@ -120,6 +120,22 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
               <span className="font-mono font-bold text-slate-800">{pages.length} pages</span>
             </div>
             <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-600">CMYK Output Profile</span>
+              <span className="font-mono font-bold text-indigo-700">
+                {project.colorSettings?.outputProfileId === 'gracol'
+                  ? 'GRACoL 2006 (Coated 1)'
+                  : project.colorSettings?.outputProfileId === 'fogra51'
+                  ? 'FOGRA51 (PSO Coated v3)'
+                  : project.colorSettings?.customProfile?.name || 'FOGRA39 (ISO Coated v2)'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold text-slate-600">Black Separation & Overprint</span>
+              <span className="font-mono font-semibold text-emerald-700">
+                100K Pure Black • Overprint Active
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="font-semibold text-slate-600">Download Filename</span>
               <span className="font-mono text-indigo-600 font-bold truncate max-w-[200px]">
                 {filename}

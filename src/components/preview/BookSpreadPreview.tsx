@@ -265,6 +265,15 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
             </button>
           </div>
 
+          {/* Screen Proofing Label */}
+          <span
+            className="hidden xl:inline-flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200"
+            title="Interactive canvas displays in standard web sRGB. True CMYK color separations and press overprint are compiled into the exported Print-Ready PDF."
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
+            <span>Screen Preview (sRGB)</span>
+          </span>
+
           {/* Zoom buttons */}
           <div className="flex items-center space-x-1" role="group" aria-label="Zoom controls">
             <button

@@ -8,6 +8,12 @@ import {
   TypographySettings,
 } from '@/types/book';
 import { getEffectiveTypography } from '@/services/templates/templateRegistry';
+import { hexToCmyk, parseHexToRgb } from '@/services/cmyk/colorConversion';
+import { postProcessToCmykPdf } from '@/services/cmyk/cmykPdfPostProcessor';
+import {
+  inspectPdfCmykCompliance,
+  CmykPreflightReport,
+} from '@/services/cmyk/cmykPreflightInspector';
 
 export interface ExportProgressCallback {
   (progressPercent: number, statusText: string): void;
@@ -24,13 +30,23 @@ export function sanitizePdfFilename(title: string): string {
 }
 
 /**
+ * Interface returned by generatePrintPdf, providing backward compatibility with jsPDF's
+ * .save() and .output('arraybuffer') while exposing the prepress CMYK report.
+ */
+export interface PrintPdfExportResult {
+  save: (filename?: string) => void;
+  output: (type?: 'arraybuffer' | 'blob' | 'datauristring' | string) => any;
+  getBytes: () => Uint8Array;
+  getPreflightReport: () => CmykPreflightReport;
+}
+
+/**
  * Crops an image client-side via canvas before drawing into the PDF.
  */
 async function getCroppedDataUrl(
   dataUrl: string,
   crop: { x: number; y: number; width: number; height: number }
 ): Promise<string> {
-  // If no canvas support (e.g. pure Node or jsdom test environment), return dataUrl directly
   if (
     typeof window === 'undefined' ||
     !window.document ||
@@ -83,13 +99,10 @@ async function getCroppedDataUrl(
   });
 }
 
-import { parseHexColor } from '@/services/preflight/preflightService';
-
 function mapFontFamilyToPdfFont(
   family: string,
   project?: BookProject
 ): { fontName: string; isSerif: boolean } {
-  // Check if family references an embedded custom font
   if (project?.customFonts) {
     const customMatch = project.customFonts.find(
       (cf) => cf.canEmbedInPdf && family.toLowerCase().includes(cf.familyName.toLowerCase())
@@ -115,7 +128,7 @@ function mapFontFamilyToPdfFont(
 }
 
 /**
- * Draws standard commercial print crop/trim marks at the 4 corners of the page trim area.
+ * Draws standard commercial print crop/trim marks at the 4 corners using 100K registration stroke.
  */
 function drawCropMarks(
   doc: jsPDF,
@@ -128,7 +141,7 @@ function drawCropMarks(
   const markLength = 0.1875; // 3/16 inch mark length
   const markOffset = 0.0625; // 1/16 inch distance from trim edge
 
-  doc.setDrawColor(0, 0, 0);
+  doc.setDrawColor(0, 0, 0, 1); // 100K CMYK stroke
   doc.setLineWidth(0.006); // 0.43 pt thin registration line
 
   // Top-Left corner
@@ -158,7 +171,8 @@ function drawCropMarks(
 
 /**
  * Generates a print-ready vector PDF adhering strictly to template geometry,
- * bleed, crop marks, running headers, and multi-column typography.
+ * bleed, crop marks, running headers, multi-column typography, real CMYK color spaces,
+ * embedded ICC output intent, and black overprint settings.
  */
 export async function generatePrintPdf(
   project: BookProject,
@@ -166,13 +180,13 @@ export async function generatePrintPdf(
   pages: PagePreviewData[],
   options: PdfExportOptions,
   onProgress?: ExportProgressCallback
-): Promise<jsPDF> {
+): Promise<PrintPdfExportResult> {
   const effectiveTypo = getEffectiveTypography(template, project.typography, project.author);
 
   const trimW = template.pageWidthInches;
   const trimH = template.pageHeightInches;
   const bleed = options.includeBleed ? template.bleedInches : 0;
-  const cropMarkMargin = options.includeCropMarks ? 0.35 : 0; // extra sheet area for crop marks
+  const cropMarkMargin = options.includeCropMarks ? 0.35 : 0;
 
   const totalPageW = trimW + bleed * 2 + cropMarkMargin * 2;
   const totalPageH = trimH + bleed * 2 + cropMarkMargin * 2;
@@ -186,7 +200,7 @@ export async function generatePrintPdf(
     orientation,
     unit: 'in',
     format: [totalPageW, totalPageH],
-    compress: true,
+    compress: false, // uncompressed stream for clean prepress post-processing
   });
 
   // Register custom embedded fonts into jsPDF VFS if available
@@ -212,18 +226,25 @@ export async function generatePrintPdf(
   doc.setProperties({
     title: project.title,
     author: effectiveTypo.authorName || 'Author',
-    creator: 'ATS EasyBook Print Engine (Phase 4)',
+    creator: 'ATS EasyBook CMYK Prepress Engine (Phase 4.1)',
   });
 
   const totalPagesCount = pages.length;
   const design = project.design || template.design || {};
+  const colorSettings = options.colorManagement || project.colorSettings || {
+    outputProfileId: 'fogra39',
+    blackHandling: 'standard-text',
+    overprintBlackText: true,
+    overprintBlackRules: true,
+  };
+  const blackHandling = colorSettings.blackHandling || 'standard-text';
 
   for (let pIdx = 0; pIdx < totalPagesCount; pIdx++) {
     const page = pages[pIdx];
 
     if (onProgress) {
-      const pct = Math.round(((pIdx + 1) / totalPagesCount) * 100);
-      onProgress(pct, `Rendering PDF page ${pIdx + 1} of ${totalPagesCount}...`);
+      const pct = Math.round(((pIdx + 1) / totalPagesCount) * 50); // first 50% is layout
+      onProgress(pct, `Compiling page ${pIdx + 1} of ${totalPagesCount}...`);
     }
 
     if (pIdx > 0) {
@@ -239,11 +260,13 @@ export async function generatePrintPdf(
     const fillH = trimH + bleed * 2;
 
     if (design.backgroundColor && design.backgroundColor.toLowerCase() !== '#ffffff') {
-      const bgRgb = parseHexColor(design.backgroundColor);
-      if (bgRgb) {
-        doc.setFillColor(bgRgb.r, bgRgb.g, bgRgb.b);
-        doc.rect(fillX, fillY, fillW, fillH, 'F');
-      }
+      const bgCmyk = hexToCmyk(design.backgroundColor, {
+        isBackground: true,
+        blackHandling,
+        maxTac: colorSettings.maxTacPercent || 300,
+      });
+      doc.setFillColor(bgCmyk.c, bgCmyk.m, bgCmyk.y, bgCmyk.k);
+      doc.rect(fillX, fillY, fillW, fillH, 'F');
     }
 
     if (design.backgroundImage) {
@@ -266,8 +289,11 @@ export async function generatePrintPdf(
       const borderW = trimW - borderInset * 2;
       const borderH = trimH - borderInset * 2;
 
-      const borderRgb = parseHexColor(design.borderColor || '#000000') || { r: 0, g: 0, b: 0 };
-      doc.setDrawColor(borderRgb.r, borderRgb.g, borderRgb.b);
+      const borderCmyk = hexToCmyk(design.borderColor || '#000000', {
+        isBlackRule: true,
+        blackHandling,
+      });
+      doc.setDrawColor(borderCmyk.c, borderCmyk.m, borderCmyk.y, borderCmyk.k);
       doc.setLineWidth(borderWidthPt / 72);
 
       if (design.borderStyle === 'dashed') {
@@ -296,14 +322,14 @@ export async function generatePrintPdf(
     if (page.isBlankPage) {
       doc.setFont('times', 'italic');
       doc.setFontSize(9);
-      doc.setTextColor(150, 150, 150);
+      doc.setTextColor(0, 0, 0, 0.4); // 40K tint
       doc.text('[This page intentionally left blank]', originX + trimW / 2, originY + trimH / 2, {
         align: 'center',
       });
       continue;
     }
 
-    // Determine mirrored margin offsets for Verso (even) vs Recto (odd)
+    // Margins
     const isLeft = page.isLeft;
     const insideMargin = template.margins.insideInches + template.margins.gutterInches;
     const outsideMargin = template.margins.outsideInches;
@@ -317,10 +343,14 @@ export async function generatePrintPdf(
     const contentWidth = trimW - (marginLeft + marginRight);
     const contentHeight = trimH - (marginTop + marginBottom);
 
-    // Color definitions from design
-    const hfRgb = parseHexColor(design.headerFooterColor || '#5a5a5a') || { r: 90, g: 90, b: 90 };
-    const headRgb = parseHexColor(design.headingColor || '#141414') || { r: 20, g: 20, b: 20 };
-    const textRgb = parseHexColor(design.textColor || '#1e1e1e') || { r: 30, g: 30, b: 30 };
+    // CMYK Color definitions
+    const hfCmyk = hexToCmyk(design.headerFooterColor || '#5a5a5a', { maxTac: 300 });
+    const headCmyk = hexToCmyk(design.headingColor || '#141414', {
+      isBodyText: true,
+      blackHandling,
+    });
+    // Standard body text black: strictly C0 M0 Y0 K100
+    const textCmyk = { c: 0, m: 0, y: 0, k: 1 };
 
     // -------------------------------------------------------------
     // Running Header
@@ -329,9 +359,7 @@ export async function generatePrintPdf(
       const headerY = originY + marginTop * 0.65;
       doc.setFont('times', 'italic');
       doc.setFontSize(8.5);
-      doc.setTextColor(hfRgb.r, hfRgb.g, hfRgb.b);
-
-      // Centered or split header
+      doc.setTextColor(hfCmyk.c, hfCmyk.m, hfCmyk.y, hfCmyk.k);
       doc.text(page.headerText, originX + trimW / 2, headerY, { align: 'center' });
     }
 
@@ -342,7 +370,7 @@ export async function generatePrintPdf(
       const footerY = originY + trimH - marginBottom * 0.55;
       doc.setFont('times', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(hfRgb.r, hfRgb.g, hfRgb.b);
+      doc.setTextColor(hfCmyk.c, hfCmyk.m, hfCmyk.y, hfCmyk.k);
 
       const pos = effectiveTypo.pageNumberPosition;
       if (pos === 'bottom-center') {
@@ -358,7 +386,7 @@ export async function generatePrintPdf(
     }
 
     // -------------------------------------------------------------
-    // Page Content Rendering (One or Two Columns)
+    // Page Content Rendering
     // -------------------------------------------------------------
     const isTwoCol = template.columns.count === 2;
     const colGap = isTwoCol ? template.columns.gapInches : 0;
@@ -384,9 +412,9 @@ export async function generatePrintPdf(
           const headingFont = mapFontFamilyToPdfFont(effectiveTypo.headingFontFamily, project);
           doc.setFont(headingFont.fontName, 'bold');
           doc.setFontSize(effectiveTypo.headingFontSizePt);
-          doc.setTextColor(headRgb.r, headRgb.g, headRgb.b);
+          doc.setTextColor(headCmyk.c, headCmyk.m, headCmyk.y, headCmyk.k);
 
-          currentCursorY += 0.25; // Space before heading
+          currentCursorY += 0.25;
           const headingX =
             template.typography.headingStyle.alignment === 'center'
               ? colLeft + singleColW / 2
@@ -395,7 +423,7 @@ export async function generatePrintPdf(
             template.typography.headingStyle.alignment === 'center' ? 'center' : 'left';
 
           doc.text(block.text || '', headingX, currentCursorY, { align });
-          currentCursorY += 0.35; // Space after heading
+          currentCursorY += 0.35;
           continue;
         }
 
@@ -403,13 +431,13 @@ export async function generatePrintPdf(
           const bodyFont = mapFontFamilyToPdfFont(effectiveTypo.bodyFontFamily, project);
           doc.setFont(bodyFont.fontName, 'normal');
           doc.setFontSize(effectiveTypo.bodyFontSizePt);
-          doc.setTextColor(textRgb.r, textRgb.g, textRgb.b);
+          // Pure 100K Black for body text
+          doc.setTextColor(textCmyk.c, textCmyk.m, textCmyk.y, textCmyk.k);
 
           const isAfterHeading = bIdx > 0 && colBlocks[bIdx - 1].type === 'chapter-heading';
           const isContinuation = block.isContinuation;
           const shouldIndent = !isAfterHeading && !isContinuation && effectiveTypo.paragraphIndentInches > 0;
 
-          // Split paragraph into lines that fit singleColW
           const splitLines = doc.splitTextToSize(block.text, singleColW);
           const lineStep = (effectiveTypo.bodyFontSizePt / 72) * effectiveTypo.bodyLineHeight;
 
@@ -420,7 +448,6 @@ export async function generatePrintPdf(
             currentCursorY += lineStep;
           }
 
-          // Paragraph spacing
           if (effectiveTypo.paragraphSpacingPt > 0) {
             currentCursorY += effectiveTypo.paragraphSpacingPt / 72;
           } else {
@@ -433,7 +460,6 @@ export async function generatePrintPdf(
           const p = block.placement;
           const img = block.image;
 
-          // Full-width in 2-col spans full content width; otherwise single column width
           const availableW = p.mode === 'full-width' ? contentWidth : singleColW;
           const renderW = Math.max(0.5, availableW * ((p.widthPercent || 100) / 100));
 
@@ -464,17 +490,71 @@ export async function generatePrintPdf(
           if (p.caption && p.caption.trim()) {
             doc.setFont('times', 'italic');
             doc.setFontSize(8.5);
-            doc.setTextColor(80, 80, 80);
+            doc.setTextColor(0, 0, 0, 0.7); // 70K tint
             currentCursorY += 0.12;
             doc.text(p.caption, imgX + renderW / 2, currentCursorY, { align: 'center' });
             currentCursorY += 0.1;
           }
 
-          currentCursorY += 0.15; // Bottom margin after image
+          currentCursorY += 0.15;
         }
       }
     }
   }
 
-  return doc;
+  // -------------------------------------------------------------
+  // Prepress CMYK Post-Processing Pipeline
+  // -------------------------------------------------------------
+  if (onProgress) {
+    onProgress(70, 'Converting images and vectors to DeviceCMYK ICC profile...');
+  }
+
+  const rawPdfBytes = doc.output('arraybuffer');
+  const cmykPdfBytes = await postProcessToCmykPdf(
+    rawPdfBytes,
+    project,
+    template,
+    options
+  );
+
+  if (onProgress) {
+    onProgress(90, 'Running independent CMYK / PDF-X prepress inspection...');
+  }
+
+  // Deep Prepress Verification Check
+  const preflightReport = await inspectPdfCmykCompliance(cmykPdfBytes);
+  if (!preflightReport.isCompliant && preflightReport.blockingErrors.length > 0) {
+    const errorMsg = `Print-Ready CMYK Prepress Failed: ${preflightReport.blockingErrors.join('; ')}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  return {
+    save: (downloadName: string = 'book-print.pdf') => {
+      if (typeof window !== 'undefined' && window.document) {
+        const blob = new Blob([cmykPdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }, 200);
+      }
+    },
+    output: (type?: string) => {
+      if (type === 'arraybuffer') {
+        return cmykPdfBytes.buffer;
+      }
+      if (type === 'blob') {
+        return new Blob([cmykPdfBytes.buffer as ArrayBuffer], { type: 'application/pdf' });
+      }
+      return cmykPdfBytes;
+    },
+    getBytes: () => cmykPdfBytes,
+    getPreflightReport: () => preflightReport,
+  };
 }

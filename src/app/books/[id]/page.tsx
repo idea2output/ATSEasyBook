@@ -305,6 +305,12 @@ export default function BookEditorPage() {
       setActiveEditorTab('images');
     } else if (issue.actionType === 'open-blocks') {
       setActiveEditorTab('blocks');
+    } else if (issue.actionType === 'open-design') {
+      setActiveEditorTab('design');
+    } else if (issue.actionType === 'open-fonts') {
+      setActiveEditorTab('fonts');
+    } else if (issue.actionType === 'open-color') {
+      setActiveEditorTab('color');
     } else if (issue.actionType === 'select-image' && issue.placementId) {
       setSelectedPlacementId(issue.placementId);
     }

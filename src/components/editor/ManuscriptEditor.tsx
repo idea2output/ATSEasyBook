@@ -20,6 +20,7 @@ import { TypographyPanel } from '@/components/typography/TypographyPanel';
 import { PreflightPanel } from '@/components/preflight/PreflightPanel';
 import { DesignPanel } from '@/components/design/DesignPanel';
 import { FontManagerPanel } from '@/components/fonts/FontManagerPanel';
+import { ColorManagementPanel } from '@/components/color/ColorManagementPanel';
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
 import {
   Save,
@@ -38,6 +39,7 @@ import {
   User,
   Palette,
   Bookmark,
+  Printer,
 } from 'lucide-react';
 
 export type EditorTabType =
@@ -47,6 +49,7 @@ export type EditorTabType =
   | 'typography'
   | 'design'
   | 'fonts'
+  | 'color'
   | 'preflight';
 
 interface ManuscriptEditorProps {
@@ -94,7 +97,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState<boolean>(false);
   const isExpert = book.editorMode === 'expert';
   const rawActiveTab = controlledTab || internalTab;
-  const activeTab = !isExpert && (rawActiveTab === 'design' || rawActiveTab === 'fonts')
+  const activeTab = !isExpert && (rawActiveTab === 'design' || rawActiveTab === 'fonts' || rawActiveTab === 'color')
     ? 'typography'
     : rawActiveTab;
   const setActiveTab = onTabChange || setInternalTab;
@@ -408,6 +411,24 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             </button>
           )}
 
+          {isExpert && (
+            <button
+              type="button"
+              role="tab"
+              id="tab-color"
+              aria-selected={activeTab === 'color'}
+              onClick={() => setActiveTab('color')}
+              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
+                activeTab === 'color'
+                  ? 'border-purple-600 text-purple-600 bg-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Printer className="w-3.5 h-3.5 text-purple-600" />
+              <span>Color (CMYK)</span>
+            </button>
+          )}
+
           <button
             type="button"
             role="tab"
@@ -650,6 +671,13 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
                 customFonts: (book.customFonts || []).filter((f) => f.id !== fId),
               })
             }
+          />
+        )}
+
+        {activeTab === 'color' && (
+          <ColorManagementPanel
+            project={book}
+            onUpdateBook={onUpdateBook}
           />
         )}
 

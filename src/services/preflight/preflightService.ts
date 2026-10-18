@@ -377,6 +377,119 @@ export function runPrintPreflight(
         actionType: 'open-typography',
         actionLabel: 'Fix Template',
       });
+    } else {
+      passedCount++;
+    }
+  }
+
+  // Error 7: Missing or Invalid Custom CMYK Profile
+  if (project.colorSettings?.outputProfileId === 'custom') {
+    if (!project.colorSettings.customProfile?.iccDataUrl) {
+      issues.push({
+        id: 'err-missing-custom-cmyk-profile',
+        severity: 'error',
+        category: 'color',
+        title: 'Missing custom ICC profile data',
+        description: 'Custom CMYK output is selected, but no valid .icc / .icm profile has been uploaded. Select a standard profile (FOGRA39, FOGRA51, GRACoL) or upload a printer profile.',
+        actionType: 'open-color',
+        actionLabel: 'Manage Color',
+      });
+    } else {
+      passedCount++;
+    }
+  } else {
+    passedCount++;
+  }
+
+  // Error 8: Corrupt or Unconvertible Raster Image
+  let corruptImageCount = 0;
+  for (const img of images) {
+    if (!img.dataUrl || img.dataUrl.length < 20 || !img.dataUrl.startsWith('data:image/')) {
+      corruptImageCount++;
+      issues.push({
+        id: `err-corrupt-image-${img.id}`,
+        severity: 'error',
+        category: 'image',
+        title: `Corrupt image data for "${img.filename}"`,
+        description: `Image data cannot be loaded or converted to CMYK. Re-upload this image in the library.`,
+        imageId: img.id,
+        actionType: 'open-library',
+        actionLabel: 'Inspect Library',
+      });
+    }
+  }
+  if (corruptImageCount === 0) {
+    passedCount++;
+  }
+
+  // Warning 11: Text Black is not pure 100K (C0 M0 Y0 K100)
+  if (project.design?.textColor) {
+    const textRgb = parseHexColor(project.design.textColor);
+    if (textRgb) {
+      const isPure100K = (textRgb.r === 0 && textRgb.g === 0 && textRgb.b === 0) ||
+                         (textRgb.r <= 35 && textRgb.g <= 35 && textRgb.b <= 35 && Math.abs(textRgb.r - textRgb.g) < 5 && Math.abs(textRgb.g - textRgb.b) < 5);
+      if (!isPure100K) {
+        issues.push({
+          id: 'warn-text-black-not-pure-100k',
+          severity: 'warning',
+          category: 'color',
+          title: `Body text color is tinted (${project.design.textColor}) rather than pure 100K Black`,
+          description: `Publishing standards require body text to be printed in pure C0 M0 Y0 K100. Tinted or 4-color black text risks registration halos on press.`,
+          actionType: 'open-color',
+          actionLabel: 'Color Settings',
+        });
+      }
+    }
+  }
+
+  // Warning 12: Rich Black used on thin rules / small borders (< 2 pt)
+  if (project.colorSettings?.blackHandling === 'rich-black-preset') {
+    if (project.design?.borderEnabled && (project.design.borderWidthPt ?? 1) < 2) {
+      issues.push({
+        id: 'warn-rich-black-on-fine-rules',
+        severity: 'warning',
+        category: 'color',
+        title: 'Rich Black preset active with fine decorative border (< 2 pt)',
+        description: 'Rich black (4-color ink build) on fine rules and borders under 2 pt can cause ink misregistration on high-speed presses. Use pure 100K black for thin rules.',
+        actionType: 'open-color',
+        actionLabel: 'Adjust Black',
+      });
+    }
+  }
+
+  // Warning 13: 100K Black Overprint Disabled
+  if (project.colorSettings?.overprintBlackText === false || project.colorSettings?.overprintBlackRules === false) {
+    issues.push({
+      id: 'warn-black-overprint-disabled',
+      severity: 'warning',
+      category: 'color',
+      title: 'Black overprint is disabled',
+      description: 'Overprinting 100K black text and rules prevents white registration gaps when paper shifts on press. Keep black overprint enabled unless your printer specifically requests knockout.',
+      actionType: 'open-color',
+      actionLabel: 'Enable Overprint',
+    });
+  }
+
+  // Warning 14: Total Ink Coverage (TAC) Limit
+  const maxTac = project.colorSettings?.maxTacPercent || 300;
+  if (project.design?.backgroundColor && project.design.backgroundColor.toLowerCase() !== '#ffffff') {
+    const bgRgb = parseHexColor(project.design.backgroundColor);
+    if (bgRgb) {
+      const c = (255 - bgRgb.r) / 255;
+      const m = (255 - bgRgb.g) / 255;
+      const y = (255 - bgRgb.b) / 255;
+      const rawTac = Math.round((c + m + y) * 100);
+      if (rawTac > maxTac) {
+        issues.push({
+          id: 'warn-tac-exceeded',
+          severity: 'warning',
+          category: 'color',
+          title: `Page background ink coverage (${rawTac}%) exceeds profile limit (${maxTac}%)`,
+          description: `Total ink coverage (TAC) of ${rawTac}% exceeds the configured press limit (${maxTac}%). Color conversion will compress ink density during export.`,
+          actionType: 'open-color',
+          actionLabel: 'Inspect TAC',
+        });
+      }
     }
   }
 

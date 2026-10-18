@@ -11,6 +11,7 @@ import {
 import { parseManuscript } from '../formatting/manuscriptParser';
 import { defaultPaginationEngine } from '../pagination/paginationEngine';
 import { BookProject, BookImage, ImagePlacement } from '@/types/book';
+import { inspectPdfCmykCompliance } from '../cmyk/cmykPreflightInspector';
 
 const ARTIFACT_DIR = 'C:\\Users\\ZARKA\\.gemini\\antigravity\\brain\\2f69f596-41b2-4280-b07f-e834ff1996f2';
 
@@ -18,7 +19,7 @@ const ARTIFACT_DIR = 'C:\\Users\\ZARKA\\.gemini\\antigravity\\brain\\2f69f596-41
 const VALID_JPEG =
   'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
 
-describe('Generate Phase 3 Sample Print PDFs', () => {
+describe('Generate Phase 4.1 Sample Print PDFs with CMYK & Overprint', () => {
   const manuscript = `PROLOGUE: THE VEIL OF SEAS
 
 The northern gale had howled for three days without respite. Captain Joshua Vance gripped the salt-crusted helm of the Northern Gull, peering through the driving sleet at a sea black as ink. Below deck, eighteen souls prayed that the timbers would hold against the fury of the Atlantic.
@@ -80,7 +81,7 @@ Every man on watch remained at his station in focused silence. They knew well th
     },
   ];
 
-  it('generates classic-novel-sample.pdf (6x9 with inline, full-width, float-right images)', async () => {
+  it('generates classic-novel-sample.pdf (6x9 CMYK with FOGRA39, overprint, 100K black)', async () => {
     const placements: ImagePlacement[] = [
       {
         id: 'p-inline',
@@ -122,6 +123,13 @@ Every man on watch remained at his station in focused silence. They knew well th
       placements,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      colorSettings: {
+        outputProfileId: 'fogra39',
+        blackHandling: 'standard-text',
+        overprintBlackText: true,
+        overprintBlackRules: true,
+        maxTacPercent: 300,
+      },
       typography: {
         bodyFontFamily: 'Georgia, Cambria, serif',
         bodyFontSizePt: 10.5,
@@ -144,13 +152,14 @@ Every man on watch remained at his station in focused silence. They knew well th
       typography: project.typography,
     });
 
-    const pdfDoc = await generatePrintPdf(project, CLASSIC_NOVEL_6X9, pages, {
+    const exportResult = await generatePrintPdf(project, CLASSIC_NOVEL_6X9, pages, {
       includeBleed: false,
       includeCropMarks: false,
       acknowledgedWarnings: true,
+      colorManagement: project.colorSettings as any,
     });
 
-    const pdfBytes = pdfDoc.output('arraybuffer');
+    const pdfBytes = exportResult.output('arraybuffer');
     const targetFile = path.join(ARTIFACT_DIR, 'classic-novel-sample.pdf');
     fs.writeFileSync(targetFile, Buffer.from(pdfBytes));
 
@@ -161,10 +170,24 @@ Every man on watch remained at his station in focused silence. They knew well th
     expect(Math.round(width)).toBe(432); // 6 inches
     expect(Math.round(height)).toBe(648); // 9 inches
     expect(loaded.getPageCount()).toBeGreaterThanOrEqual(2);
-    console.log(`Saved classic-novel-sample.pdf with ${loaded.getPageCount()} pages (${fs.statSync(targetFile).size} bytes)`);
+
+    // Deep Prepress Inspection Verification
+    const report = await inspectPdfCmykCompliance(pdfBytes);
+    expect(report.isCompliant).toBe(true);
+    expect(report.rgbObjectsCount).toBe(0);
+    expect(report.rgbImagesCount).toBe(0);
+    expect(report.iccProfileEmbedded).toBe(true);
+    expect(report.outputCondition).toBe('FOGRA39');
+    expect(report.overprintEnabled).toBe(true);
+    expect(report.bodyTextPure100K).toBe(true);
+
+    const reportFile = path.join(ARTIFACT_DIR, 'cmyk-preflight-report-classic-novel.json');
+    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
+
+    console.log(`Verified classic-novel-sample.pdf (CMYK compliant, 0 RGB objects, ${loaded.getPageCount()} pages)`);
   });
 
-  it('generates magazine-report-sample.pdf (A4 two-column with bleed & crop marks)', async () => {
+  it('generates magazine-report-sample.pdf (A4 two-column CMYK with bleed, crop marks, overprint)', async () => {
     const placements: ImagePlacement[] = [
       {
         id: 'p-inline-mag',
@@ -197,6 +220,13 @@ Every man on watch remained at his station in focused silence. They knew well th
       placements,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      colorSettings: {
+        outputProfileId: 'fogra39',
+        blackHandling: 'standard-text',
+        overprintBlackText: true,
+        overprintBlackRules: true,
+        maxTacPercent: 300,
+      },
       typography: {
         bodyFontFamily: 'Helvetica, Arial, sans-serif',
         bodyFontSizePt: 9.5,
@@ -218,13 +248,14 @@ Every man on watch remained at his station in focused silence. They knew well th
       typography: project.typography,
     });
 
-    const pdfDoc = await generatePrintPdf(project, MAGAZINE_REPORT_A4, pages, {
+    const exportResult = await generatePrintPdf(project, MAGAZINE_REPORT_A4, pages, {
       includeBleed: true,
       includeCropMarks: true,
       acknowledgedWarnings: true,
+      colorManagement: project.colorSettings as any,
     });
 
-    const pdfBytes = pdfDoc.output('arraybuffer');
+    const pdfBytes = exportResult.output('arraybuffer');
     const targetFile = path.join(ARTIFACT_DIR, 'magazine-report-sample.pdf');
     fs.writeFileSync(targetFile, Buffer.from(pdfBytes));
 
@@ -232,14 +263,25 @@ Every man on watch remained at his station in focused silence. They knew well th
     const p1 = loaded.getPage(0);
     const { width, height } = p1.getSize();
 
-    // A4 is 210 x 297 mm = 595.28 x 841.89 pt. With bleed (0.125in = 9pt) & sheet margin (0.375in = 27pt), total sheet is ~667 x 913 pt
     expect(width).toBeGreaterThan(600);
     expect(height).toBeGreaterThan(850);
     expect(loaded.getPageCount()).toBeGreaterThanOrEqual(2);
-    console.log(`Saved magazine-report-sample.pdf with ${loaded.getPageCount()} pages (${fs.statSync(targetFile).size} bytes)`);
+
+    // Deep Prepress Inspection Verification
+    const report = await inspectPdfCmykCompliance(pdfBytes);
+    expect(report.isCompliant).toBe(true);
+    expect(report.rgbObjectsCount).toBe(0);
+    expect(report.rgbImagesCount).toBe(0);
+    expect(report.iccProfileEmbedded).toBe(true);
+    expect(report.overprintEnabled).toBe(true);
+
+    const reportFile = path.join(ARTIFACT_DIR, 'cmyk-preflight-report-magazine-report.json');
+    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
+
+    console.log(`Verified magazine-report-sample.pdf (CMYK compliant, 0 RGB objects, ${loaded.getPageCount()} pages)`);
   });
 
-  it('generates illustrated-book-sample.pdf (8x10 inches with image captions)', async () => {
+  it('generates illustrated-book-sample.pdf (8x10 CMYK with captions and DeviceCMYK images)', async () => {
     const placements: ImagePlacement[] = [
       {
         id: 'p-chart-ill',
@@ -272,6 +314,13 @@ Every man on watch remained at his station in focused silence. They knew well th
       placements,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      colorSettings: {
+        outputProfileId: 'fogra39',
+        blackHandling: 'standard-text',
+        overprintBlackText: true,
+        overprintBlackRules: true,
+        maxTacPercent: 300,
+      },
       typography: {
         bodyFontFamily: 'Garamond, Georgia, serif',
         bodyFontSizePt: 11,
@@ -293,13 +342,14 @@ Every man on watch remained at his station in focused silence. They knew well th
       typography: project.typography,
     });
 
-    const pdfDoc = await generatePrintPdf(project, ILLUSTRATED_BOOK_8X10, pages, {
+    const exportResult = await generatePrintPdf(project, ILLUSTRATED_BOOK_8X10, pages, {
       includeBleed: false,
       includeCropMarks: false,
       acknowledgedWarnings: true,
+      colorManagement: project.colorSettings as any,
     });
 
-    const pdfBytes = pdfDoc.output('arraybuffer');
+    const pdfBytes = exportResult.output('arraybuffer');
     const targetFile = path.join(ARTIFACT_DIR, 'illustrated-book-sample.pdf');
     fs.writeFileSync(targetFile, Buffer.from(pdfBytes));
 
@@ -307,10 +357,21 @@ Every man on watch remained at his station in focused silence. They knew well th
     const p1 = loaded.getPage(0);
     const { width, height } = p1.getSize();
 
-    // 8x10 inches = 576 x 720 pt
-    expect(Math.round(width)).toBe(576);
-    expect(Math.round(height)).toBe(720);
+    expect(Math.round(width)).toBe(576); // 8 inches
+    expect(Math.round(height)).toBe(720); // 10 inches
     expect(loaded.getPageCount()).toBeGreaterThanOrEqual(2);
-    console.log(`Saved illustrated-book-sample.pdf with ${loaded.getPageCount()} pages (${fs.statSync(targetFile).size} bytes)`);
+
+    // Deep Prepress Inspection Verification
+    const report = await inspectPdfCmykCompliance(pdfBytes);
+    expect(report.isCompliant).toBe(true);
+    expect(report.rgbObjectsCount).toBe(0);
+    expect(report.rgbImagesCount).toBe(0);
+    expect(report.iccProfileEmbedded).toBe(true);
+    expect(report.overprintEnabled).toBe(true);
+
+    const reportFile = path.join(ARTIFACT_DIR, 'cmyk-preflight-report-illustrated-book.json');
+    fs.writeFileSync(reportFile, JSON.stringify(report, null, 2));
+
+    console.log(`Verified illustrated-book-sample.pdf (CMYK compliant, 0 RGB objects, ${loaded.getPageCount()} pages)`);
   });
 });
