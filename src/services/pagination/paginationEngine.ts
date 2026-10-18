@@ -5,12 +5,16 @@ import {
   PageBlock,
   BookImage,
   ImagePlacement,
+  TypographySettings,
 } from '@/types/book';
+import { getEffectiveTypography } from '@/services/templates/templateRegistry';
 
 export interface IPaginationOptions {
   bookTitle?: string;
+  authorName?: string;
   images?: BookImage[];
   placements?: ImagePlacement[];
+  typography?: Partial<TypographySettings>;
 }
 
 export interface IPaginationEngine {
@@ -22,7 +26,7 @@ export interface IPaginationEngine {
 }
 
 /**
- * Calculates estimated vertical line budget for an image placement on a 6x9 page.
+ * Calculates estimated vertical line budget for an image placement based on template geometry.
  */
 export function calculateImageLinesBudget(
   placement: ImagePlacement,
@@ -38,8 +42,7 @@ export function calculateImageLinesBudget(
   // Relative width fraction (e.g. 100% -> 1.0, 45% -> 0.45)
   const widthFraction = Math.max(0.1, Math.min(1.0, (placement.widthPercent || 100) / 100));
 
-  // In standard 6x9 trade novel formatting, usable text area is ~4.5" W x 7.3" H.
-  // A square image (1.0 aspect) at 100% width occupies ~60% page height (~19 lines).
+  // Height fraction calculation based on aspect ratio
   const heightFraction = (widthFraction / Math.max(0.2, aspectRatio)) * 0.62;
   let estimatedLines = Math.round(maxLines * heightFraction);
 
@@ -56,9 +59,12 @@ export function calculateImageLinesBudget(
 }
 
 /**
- * Image-aware approximate pagination engine for trade books (6x9 in).
- * Flows blocks and anchored images across pages based on line budgets, chapter breaks,
- * paragraph wrapping, and float-right text reflow.
+ * Phase 3 Pagination Engine:
+ * - Supports 1-column and 2-column page templates (e.g. A4 Magazine/Report).
+ * - Implements widow and orphan prevention (no isolated headings at column/page bottom, minimum 2 lines when splitting paragraphs).
+ * - Supports chapter opening rules: always new page vs. recto-only (with intentional blank verso pages).
+ * - Supports running header suppressions on opening pages, and customizable running header content.
+ * - Handles image reflow for inline, full-width, and float-right modes.
  */
 export class StandardPaginationEngine implements IPaginationEngine {
   paginate(
@@ -70,10 +76,15 @@ export class StandardPaginationEngine implements IPaginationEngine {
       return [];
     }
 
-    const pages: PagePreviewData[] = [];
-    const maxLines = template.linesPerPage || 32;
-    const baseCharsPerLine = template.charsPerLine || 64;
+    const effectiveTypo = getEffectiveTypography(template, options?.typography, options?.authorName);
 
+    // Compute effective lines and characters based on typography overrides
+    const sizeScale = effectiveTypo.bodyFontSizePt / (template.typography.bodyFontSizePt || 10.5);
+    const lineScale = effectiveTypo.bodyLineHeight / (template.typography.bodyLineHeight || 1.45);
+    const maxLines = Math.max(15, Math.floor(template.linesPerPage / Math.max(0.7, sizeScale * lineScale)));
+    const baseCharsPerLine = Math.max(25, Math.floor(template.charsPerLine / Math.max(0.7, sizeScale)));
+
+    const isTwoColumn = template.columns.count === 2;
     const images = options?.images || [];
     const placements = options?.placements || [];
 
@@ -85,12 +96,18 @@ export class StandardPaginationEngine implements IPaginationEngine {
       placementsByBlock.set(p.blockId, list);
     }
 
-    let currentPageBlocks: PageBlock[] = [];
-    let currentLinesUsed = 0;
+    const pages: PagePreviewData[] = [];
     let pageNumber = 1;
     let currentChapterTitle = '';
 
-    // Track layout state including float-right image wrapping on current page
+    // Active page column states
+    let col1Blocks: PageBlock[] = [];
+    let col2Blocks: PageBlock[] = [];
+    let currentColIndex: 0 | 1 = 0; // 0 = left column, 1 = right column
+    let col1LinesUsed = 0;
+    let col2LinesUsed = 0;
+
+    // Track active float-right state
     interface FloatState {
       linesRemaining: number;
       widthPercent: number;
@@ -99,18 +116,80 @@ export class StandardPaginationEngine implements IPaginationEngine {
       activeFloat: null,
     };
 
-    const pushPage = (headerText?: string) => {
+    const getActiveColBlocks = (): PageBlock[] => {
+      return currentColIndex === 0 ? col1Blocks : col2Blocks;
+    };
+
+    const getActiveColLinesUsed = (): number => {
+      return currentColIndex === 0 ? col1LinesUsed : col2LinesUsed;
+    };
+
+    const addLinesToActiveCol = (lines: number) => {
+      if (currentColIndex === 0) {
+        col1LinesUsed += lines;
+      } else {
+        col2LinesUsed += lines;
+      }
+    };
+
+    const computeHeaderText = (isLeft: boolean, isChapterOpening: boolean): string | undefined => {
+      if (isChapterOpening && effectiveTypo.suppressChapterHeader) {
+        return undefined;
+      }
+      if (effectiveTypo.runningHeaderContent === 'none') {
+        return undefined;
+      }
+
+      if (isLeft) {
+        // Verso (even page)
+        if (effectiveTypo.runningHeaderContent === 'author-title') {
+          return effectiveTypo.authorName || options?.bookTitle || '';
+        }
+        return options?.bookTitle || '';
+      } else {
+        // Recto (odd page)
+        if (effectiveTypo.runningHeaderContent === 'author-title') {
+          return options?.bookTitle || '';
+        }
+        return currentChapterTitle || options?.bookTitle || '';
+      }
+    };
+
+    const pushPage = (isChapterOpening?: boolean) => {
       const isLeft = pageNumber % 2 === 0;
-      pages.push({
-        pageNumber,
-        isLeft,
-        blocks: [...currentPageBlocks],
-        headerText,
-      });
-      pageNumber++;
-      currentPageBlocks = [];
-      currentLinesUsed = 0;
-      layoutContext.activeFloat = null; // Float does not cross page boundary in this phase
+      const allBlocksOnPage = [...col1Blocks, ...col2Blocks];
+
+      if (allBlocksOnPage.length > 0) {
+        const hasChapterHeading =
+          isChapterOpening === true || allBlocksOnPage.some((b) => b.type === 'chapter-heading');
+        const header = computeHeaderText(isLeft, hasChapterHeading);
+        pages.push({
+          pageNumber,
+          isLeft,
+          blocks: allBlocksOnPage,
+          columns: isTwoColumn ? [[...col1Blocks], [...col2Blocks]] : [[...col1Blocks]],
+          headerText: header,
+        });
+        pageNumber++;
+      }
+
+      col1Blocks = [];
+      col2Blocks = [];
+      col1LinesUsed = 0;
+      col2LinesUsed = 0;
+      currentColIndex = 0;
+      layoutContext.activeFloat = null;
+    };
+
+    const advanceColumnOrPage = (isChapterOpening: boolean = false) => {
+      if (isTwoColumn && currentColIndex === 0) {
+        // In two-column layout, advance from column 1 to column 2 on the same page
+        currentColIndex = 1;
+        layoutContext.activeFloat = null;
+      } else {
+        // Advance to next page
+        pushPage(isChapterOpening);
+      }
     };
 
     const processPlacementsForBlock = (blockId: string) => {
@@ -124,47 +203,39 @@ export class StandardPaginationEngine implements IPaginationEngine {
         const imageLines = calculateImageLinesBudget(placement, image, template);
 
         if (placement.mode === 'float-right') {
-          // If page has fewer than 4 lines remaining, push float-right to new page
-          const remainingLines = maxLines - currentLinesUsed;
+          const remainingLines = maxLines - getActiveColLinesUsed();
           if (remainingLines < 4) {
-            const isLeft = pageNumber % 2 === 0;
-            const header = isLeft ? options?.bookTitle : currentChapterTitle;
-            pushPage(header);
+            advanceColumnOrPage();
           }
 
-          currentPageBlocks.push({
+          getActiveColBlocks().push({
             blockId,
             type: 'image',
             placement,
             image,
           });
 
-          // Set active float-right wrapping for subsequent paragraph lines
           layoutContext.activeFloat = {
             linesRemaining: imageLines,
             widthPercent: placement.widthPercent || 45,
           };
-          currentLinesUsed += 1;
+          addLinesToActiveCol(1);
         } else {
-          // Inline or Full-width image: takes full text-column vertically
-          // End any active float-right before an inline/full-width block
+          // Inline or full-width
           layoutContext.activeFloat = null;
+          const remainingLines = maxLines - getActiveColLinesUsed();
 
-          const remainingLines = maxLines - currentLinesUsed;
           if (remainingLines < imageLines) {
-            // Push current page, start image at top of next page
-            const isLeft = pageNumber % 2 === 0;
-            const header = isLeft ? options?.bookTitle : currentChapterTitle;
-            pushPage(header);
+            advanceColumnOrPage();
           }
 
-          currentPageBlocks.push({
+          getActiveColBlocks().push({
             blockId,
             type: 'image',
             placement,
             image,
           });
-          currentLinesUsed += imageLines;
+          addLinesToActiveCol(imageLines);
         }
       }
     };
@@ -175,28 +246,44 @@ export class StandardPaginationEngine implements IPaginationEngine {
       if (block.type === 'chapter-heading') {
         currentChapterTitle = block.text;
 
-        // In traditional book design, chapters start on a fresh page
-        if (currentPageBlocks.length > 0) {
-          const header = pageNumber % 2 === 0 ? options?.bookTitle : currentChapterTitle;
-          pushPage(header);
+        // Chapter opening: flush current page if not already clean
+        if (col1Blocks.length > 0 || col2Blocks.length > 0) {
+          pushPage(false);
         }
 
+        // Recto-only rule: if chapter must open on recto (odd) and current page is even (verso),
+        // insert an intentional blank verso leaf
+        if (effectiveTypo.chapterOpening === 'recto-only') {
+          const isEvenPage = pageNumber % 2 === 0;
+          if (isEvenPage) {
+            pages.push({
+              pageNumber,
+              isLeft: true,
+              blocks: [],
+              columns: isTwoColumn ? [[], []] : [[]],
+              isBlankPage: true,
+              headerText: undefined,
+            });
+            pageNumber++;
+          }
+        }
+
+        // Heading size budget
         const headingLinesCount = Math.max(1, Math.ceil(block.text.length / (baseCharsPerLine * 0.75)));
         const headingTotalBudget = 4 + headingLinesCount + 2;
 
-        currentPageBlocks.push({
+        col1Blocks.push({
           blockId: block.id,
           type: 'chapter-heading',
           text: block.text,
         });
-        currentLinesUsed += headingTotalBudget;
+        col1LinesUsed += headingTotalBudget;
 
-        // Check for images placed after chapter heading
         processPlacementsForBlock(block.id);
         continue;
       }
 
-      // Paragraph flow
+      // Paragraph block
       const words = block.text.split(/\s+/).filter(Boolean);
       const totalWords = words.length;
       if (totalWords === 0) continue;
@@ -204,48 +291,51 @@ export class StandardPaginationEngine implements IPaginationEngine {
       let remainingWords = [...words];
 
       while (remainingWords.length > 0) {
-        const remainingLines = maxLines - currentLinesUsed;
+        const remainingLines = maxLines - getActiveColLinesUsed();
 
+        // Check for column/page break
         if (remainingLines <= 0) {
-          const isLeft = pageNumber % 2 === 0;
-          const header = isLeft ? options?.bookTitle : currentChapterTitle;
-          pushPage(header);
+          advanceColumnOrPage();
           continue;
         }
 
-        // Determine effective characters per line based on active float-right
-        let effectiveCharsPerLine = baseCharsPerLine;
+        // Determine effective characters per line based on active float
+        let effectiveChars = baseCharsPerLine;
         if (layoutContext.activeFloat && layoutContext.activeFloat.linesRemaining > 0) {
           const widthFraction = layoutContext.activeFloat.widthPercent / 100;
-          effectiveCharsPerLine = Math.max(20, Math.floor(baseCharsPerLine * (1 - widthFraction)));
+          effectiveChars = Math.max(18, Math.floor(baseCharsPerLine * (1 - widthFraction)));
         }
 
         const paragraphText = remainingWords.join(' ');
-        const estimatedLines = Math.max(1, Math.ceil(paragraphText.length / effectiveCharsPerLine));
-        const paragraphSpacingLines = 1;
+        const estimatedLines = Math.max(1, Math.ceil(paragraphText.length / effectiveChars));
+        const paragraphSpacingLines = effectiveTypo.paragraphSpacingPt > 0 ? 1 : 0;
         const requiredLines = estimatedLines + paragraphSpacingLines;
 
         if (remainingLines >= requiredLines) {
-          // Fits entirely on current page
-          currentPageBlocks.push({
+          // Fits entirely in current column/page
+          getActiveColBlocks().push({
             blockId: block.id,
             type: 'paragraph',
             text: paragraphText,
             isContinuation: remainingWords.length < totalWords,
           });
-          currentLinesUsed += requiredLines;
+          addLinesToActiveCol(requiredLines);
 
           if (layoutContext.activeFloat) {
-            layoutContext.activeFloat.linesRemaining = Math.max(0, layoutContext.activeFloat.linesRemaining - estimatedLines);
+            layoutContext.activeFloat.linesRemaining = Math.max(
+              0,
+              layoutContext.activeFloat.linesRemaining - estimatedLines
+            );
             if (layoutContext.activeFloat.linesRemaining === 0) {
               layoutContext.activeFloat = null;
             }
           }
           remainingWords = [];
-        } else if (remainingLines >= 3 && estimatedLines > 3) {
-          // Partial fit: split cleanly across page boundary
-          const linesToFit = remainingLines - paragraphSpacingLines;
-          const charsToFit = linesToFit * effectiveCharsPerLine;
+        } else if (remainingLines >= 3 && estimatedLines >= 4) {
+          // Partial fit across boundary with WIDOW/ORPHAN prevention:
+          // Minimum 2 lines on current page AND minimum 2 lines on continuation page
+          const linesToFit = Math.max(2, remainingLines - paragraphSpacingLines);
+          const charsToFit = linesToFit * effectiveChars;
 
           let accumulatedChars = 0;
           let splitIndex = 0;
@@ -257,43 +347,40 @@ export class StandardPaginationEngine implements IPaginationEngine {
             splitIndex = i + 1;
           }
 
-          if (splitIndex > 3 && splitIndex < remainingWords.length - 3) {
+          const remainingWordsCount = remainingWords.length - splitIndex;
+          const estimatedContinuationLines = Math.ceil(
+            remainingWords.slice(splitIndex).join(' ').length / effectiveChars
+          );
+
+          // Only split if BOTH sides have at least 2 lines (publishing standard)
+          if (splitIndex >= 4 && remainingWordsCount >= 4 && estimatedContinuationLines >= 2) {
             const firstPart = remainingWords.slice(0, splitIndex).join(' ');
             remainingWords = remainingWords.slice(splitIndex);
 
-            currentPageBlocks.push({
+            getActiveColBlocks().push({
               blockId: block.id,
               type: 'paragraph',
               text: firstPart,
               isContinuation: remainingWords.length + splitIndex < totalWords,
             });
 
-            // End current page
-            const isLeft = pageNumber % 2 === 0;
-            const header = isLeft ? options?.bookTitle : currentChapterTitle;
-            pushPage(header);
+            advanceColumnOrPage();
           } else {
-            // Push remaining paragraph to next page
-            const isLeft = pageNumber % 2 === 0;
-            const header = isLeft ? options?.bookTitle : currentChapterTitle;
-            pushPage(header);
+            // Cannot satisfy 2-line widow/orphan rule: move full remaining paragraph to next column/page
+            advanceColumnOrPage();
           }
         } else {
-          // Move remaining paragraph to next page
-          const isLeft = pageNumber % 2 === 0;
-          const header = isLeft ? options?.bookTitle : currentChapterTitle;
-          pushPage(header);
+          // Less than 3 lines remaining: move to next column/page
+          advanceColumnOrPage();
         }
       }
 
-      // Check for images placed after this paragraph block
       processPlacementsForBlock(block.id);
     }
 
-    if (currentPageBlocks.length > 0) {
-      const isLeft = pageNumber % 2 === 0;
-      const header = isLeft ? options?.bookTitle : currentChapterTitle;
-      pushPage(header);
+    // Flush any pending content on final page
+    if (col1Blocks.length > 0 || col2Blocks.length > 0) {
+      pushPage(false);
     }
 
     return pages;

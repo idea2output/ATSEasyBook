@@ -203,4 +203,106 @@ describe('StandardPaginationEngine', () => {
       expect(pages[0].blocks[1].type).toBe('paragraph');
     });
   });
+
+  describe('Phase 3 Advanced Pagination & Typography', () => {
+    it('supports two-column templates and flows text across columns', async () => {
+      const { MAGAZINE_REPORT_A4 } = await import('../templates/templateRegistry');
+      const blocks: ManuscriptBlock[] = [
+        { id: 'b1', type: 'chapter-heading', text: 'ANNUAL REPORT' },
+        { id: 'b2', type: 'paragraph', text: 'Paragraph in column one. '.repeat(60) },
+        { id: 'b3', type: 'paragraph', text: 'Paragraph continuing into column two. '.repeat(60) },
+      ];
+
+      const pages = engine.paginate(blocks, MAGAZINE_REPORT_A4, { bookTitle: 'Corporate Report' });
+      expect(pages.length).toBeGreaterThanOrEqual(1);
+      expect(pages[0].columns).toBeDefined();
+      expect(pages[0].columns?.length).toBe(2);
+      // Both columns should receive content
+      expect(pages[0].columns![0].length).toBeGreaterThan(0);
+      expect(pages[0].columns![1].length).toBeGreaterThan(0);
+    });
+
+    it('inserts an intentional blank page when recto-only chapter opening rule is active', () => {
+      const blocks: ManuscriptBlock[] = [
+        { id: 'c1', type: 'chapter-heading', text: 'Chapter 1' },
+        { id: 'p1', type: 'paragraph', text: 'Short chapter one text.' },
+        { id: 'c2', type: 'chapter-heading', text: 'Chapter 2' },
+        { id: 'p2', type: 'paragraph', text: 'Chapter two text.' },
+      ];
+
+      // Chapter 1 is on Page 1 (odd/recto). Next page would be Page 2 (even/verso).
+      // With recto-only, Page 2 becomes an intentional blank leaf, and Chapter 2 starts on Page 3 (recto)!
+      const pages = engine.paginate(blocks, CLASSIC_NOVEL_6X9, {
+        typography: { chapterOpening: 'recto-only' },
+      });
+
+      expect(pages.length).toBe(3);
+      expect(pages[0].pageNumber).toBe(1);
+      expect(pages[0].blocks[0].text).toBe('Chapter 1');
+
+      // Page 2 is the blank verso leaf
+      expect(pages[1].pageNumber).toBe(2);
+      expect(pages[1].isBlankPage).toBe(true);
+      expect(pages[1].isLeft).toBe(true);
+
+      // Page 3 is Chapter 2 on recto
+      expect(pages[2].pageNumber).toBe(3);
+      expect(pages[2].blocks[0].text).toBe('Chapter 2');
+      expect(pages[2].isLeft).toBe(false);
+    });
+
+    it('suppresses running headers on chapter opening pages', () => {
+      const blocks: ManuscriptBlock[] = [
+        { id: 'c1', type: 'chapter-heading', text: 'Chapter 1' },
+        { id: 'p1', type: 'paragraph', text: 'Chapter one opening text.' },
+      ];
+
+      const pages = engine.paginate(blocks, CLASSIC_NOVEL_6X9, {
+        bookTitle: 'The Eldridge Voyage',
+        typography: { suppressChapterHeader: true },
+      });
+
+      expect(pages.length).toBe(1);
+      // Header text suppressed on opening page
+      expect(pages[0].headerText).toBeUndefined();
+    });
+
+    it('applies author-title running header format on subsequent pages', () => {
+      const blocks: ManuscriptBlock[] = [
+        { id: 'c1', type: 'chapter-heading', text: 'Chapter 1' },
+        { id: 'p1', type: 'paragraph', text: 'Line '.repeat(600) }, // spills onto page 2
+      ];
+
+      const pages = engine.paginate(blocks, CLASSIC_NOVEL_6X9, {
+        bookTitle: 'The Eldridge Voyage',
+        authorName: 'Amjad Vance',
+        typography: {
+          runningHeaderContent: 'author-title',
+          suppressChapterHeader: true,
+        },
+      });
+
+      expect(pages.length).toBeGreaterThanOrEqual(2);
+      // Page 2 is Verso (even) -> should show author name
+      expect(pages[1].isLeft).toBe(true);
+      expect(pages[1].headerText).toBe('Amjad Vance');
+    });
+
+    it('prevents single-line paragraph orphans when breaking across page boundaries', () => {
+      const blocks: ManuscriptBlock[] = [
+        { id: 'c1', type: 'chapter-heading', text: 'Chapter 1' },
+        { id: 'p1', type: 'paragraph', text: 'Word '.repeat(100) },
+      ];
+
+      const pages = engine.paginate(blocks, CLASSIC_NOVEL_6X9);
+      for (const p of pages) {
+        for (const b of p.blocks) {
+          if (b.type === 'paragraph' && b.isContinuation) {
+            // Continuation block must have at least 2 words / lines
+            expect(b.text && b.text.split(' ').length).toBeGreaterThanOrEqual(2);
+          }
+        }
+      }
+    });
+  });
 });

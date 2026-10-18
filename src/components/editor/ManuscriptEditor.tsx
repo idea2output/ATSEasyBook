@@ -1,42 +1,73 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BookProject, BookImage, ImagePlacement, ManuscriptBlock } from '@/types/book';
+import {
+  BookProject,
+  BookImage,
+  ImagePlacement,
+  BookTemplate,
+  PagePreviewData,
+  PreflightSummary,
+  PreflightIssue,
+  TypographySettings,
+} from '@/types/book';
 import { AVAILABLE_TEMPLATES } from '@/services/templates/templateRegistry';
-import { ImageLibrary } from '@/components/images/ImageLibrary';
 import { createDefaultPlacement } from '@/services/images/imageService';
+import { ImageLibrary } from '@/components/images/ImageLibrary';
+import { TypographyPanel } from '@/components/typography/TypographyPanel';
+import { PreflightPanel } from '@/components/preflight/PreflightPanel';
 import {
   Save,
   Check,
   Wand2,
-  ListTree,
-  FileText,
   HelpCircle,
-  Image as ImageIcon,
+  FileText,
+  ListTree,
+  ImageIcon,
+  Type,
+  FileCheck,
   Plus,
   Sliders,
   Trash2,
+  Sparkles,
+  User,
 } from 'lucide-react';
+
+export type EditorTabType = 'raw' | 'blocks' | 'images' | 'typography' | 'preflight';
 
 interface ManuscriptEditorProps {
   book: BookProject;
-  onUpdateBook: (updated: Partial<BookProject>) => void;
+  template: BookTemplate;
+  pages: PagePreviewData[];
+  preflightSummary: PreflightSummary;
+  isAcknowledged: boolean;
+  onToggleAcknowledge: (val: boolean) => void;
+  onUpdateBook: (updatedFields: Partial<BookProject>) => void;
   onFormatManuscript: () => void;
-  onSave: () => Promise<void>;
+  onSave: () => void;
+  onTriggerExport: () => void;
+  onExecuteAction: (issue: PreflightIssue) => void;
   isSaving: boolean;
   hasUnsavedChanges: boolean;
   lastSavedAt: Date | null;
   selectedPlacementId?: string | null;
   onSelectPlacement?: (placementId: string | null) => void;
-  activeTab?: 'raw' | 'blocks' | 'images';
-  onTabChange?: (tab: 'raw' | 'blocks' | 'images') => void;
+  activeTab?: EditorTabType;
+  onTabChange?: (tab: EditorTabType) => void;
 }
 
 export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   book,
+  template,
+  pages,
+  preflightSummary,
+  isAcknowledged,
+  onToggleAcknowledge,
   onUpdateBook,
   onFormatManuscript,
   onSave,
+  onTriggerExport,
+  onExecuteAction,
   isSaving,
   hasUnsavedChanges,
   lastSavedAt,
@@ -45,7 +76,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   activeTab: controlledTab,
   onTabChange,
 }) => {
-  const [internalTab, setInternalTab] = useState<'raw' | 'blocks' | 'images'>('raw');
+  const [internalTab, setInternalTab] = useState<EditorTabType>('raw');
   const activeTab = controlledTab || internalTab;
   const setActiveTab = onTabChange || setInternalTab;
 
@@ -75,7 +106,6 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
 
   const handleDeleteImage = (imageId: string) => {
     const filteredImages = images.filter((img) => img.id !== imageId);
-    // Also safely remove all placements referencing this image
     const filteredPlacements = placements.filter((p) => p.imageId !== imageId);
     if (selectedPlacementId && placements.some((p) => p.id === selectedPlacementId && p.imageId === imageId)) {
       onSelectPlacement && onSelectPlacement(null);
@@ -103,13 +133,22 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
     setInsertDropdownBlockId(null);
   };
 
+  const handleUpdateTypography = (updated: Partial<TypographySettings>) => {
+    const merged = { ...(book.typography || {}), ...updated };
+    onUpdateBook({ typography: merged });
+  };
+
+  const handleResetTypography = () => {
+    onUpdateBook({ typography: {} });
+  };
+
   return (
     <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       {/* Editor Header: Title Input & Quick Actions */}
       <div className="p-4 border-b border-slate-200 bg-slate-50/50 space-y-3">
-        {/* Title and Save Status Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex-1">
+        {/* Title and Author Bar */}
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+          <div className="sm:col-span-6">
             <label htmlFor="book-title-input" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
               Book Project Title
             </label>
@@ -119,13 +158,27 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               value={book.title}
               onChange={(e) => onUpdateBook({ title: e.target.value })}
               placeholder="e.g. The Eldridge Voyage"
-              className="w-full text-base sm:text-lg font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+              className="w-full text-sm sm:text-base font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
             />
           </div>
 
-          <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+          <div className="sm:col-span-3">
+            <label htmlFor="book-author-input" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+              Author
+            </label>
+            <input
+              id="book-author-input"
+              type="text"
+              value={book.author || ''}
+              onChange={(e) => onUpdateBook({ author: e.target.value })}
+              placeholder="Author Name"
+              className="w-full text-xs sm:text-sm font-medium text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <div className="sm:col-span-3 flex items-end justify-between sm:justify-end space-x-2">
             {/* Save Status Indicator */}
-            <div className="flex items-center space-x-1.5 text-xs text-slate-500 px-2.5 py-1">
+            <div className="flex items-center space-x-1.5 text-xs text-slate-500 px-1 py-1">
               {isSaving ? (
                 <>
                   <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
@@ -134,7 +187,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               ) : hasUnsavedChanges ? (
                 <>
                   <div className="w-2 h-2 rounded-full bg-amber-500" />
-                  <span className="text-amber-700 font-medium">Unsaved edits</span>
+                  <span className="text-amber-700 font-medium">Unsaved</span>
                 </>
               ) : lastSavedAt ? (
                 <>
@@ -152,7 +205,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               onClick={onSave}
               disabled={isSaving}
               aria-label="Save manuscript now"
-              className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:opacity-50"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save</span>
@@ -161,7 +214,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
         </div>
 
         {/* Template Selector & Format Button */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-200/60">
           <div className="flex items-center space-x-2">
             <label htmlFor="template-select" className="text-xs font-medium text-slate-600 shrink-0">
               Template:
@@ -174,7 +227,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             >
               {AVAILABLE_TEMPLATES.map((tmpl) => (
                 <option key={tmpl.id} value={tmpl.id}>
-                  {tmpl.name}
+                  {tmpl.name} ({tmpl.pageWidthInches}&quot; × {tmpl.pageHeightInches}&quot;)
                 </option>
               ))}
             </select>
@@ -222,9 +275,9 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
         )}
       </div>
 
-      {/* Editor Tabs: Raw Manuscript vs Structured Blocks vs Image Library */}
-      <div className="px-4 border-b border-slate-200 bg-slate-50/30 flex items-center justify-between">
-        <div className="flex space-x-2" role="tablist" aria-label="Editor views">
+      {/* Editor Tabs: Raw Manuscript vs Structured Blocks vs Image Library vs Typography vs Preflight */}
+      <div className="px-4 border-b border-slate-200 bg-slate-50/30 flex items-center justify-between overflow-x-auto">
+        <div className="flex space-x-2 shrink-0" role="tablist" aria-label="Editor views">
           <button
             type="button"
             role="tab"
@@ -252,7 +305,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             }`}
           >
             <ListTree className="w-3.5 h-3.5" />
-            <span>Structured Blocks ({blocksCount})</span>
+            <span>Blocks ({blocksCount})</span>
           </button>
 
           <button
@@ -267,16 +320,57 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             }`}
           >
             <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Image Library ({images.length})</span>
+            <span>Images ({images.length})</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'typography'}
+            onClick={() => setActiveTab('typography')}
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              activeTab === 'typography'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Type className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Typography</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'preflight'}
+            onClick={() => setActiveTab('preflight')}
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              activeTab === 'preflight'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Preflight</span>
+            {preflightSummary.errorsCount > 0 ? (
+              <span className="ml-1 px-1.5 py-0.2 bg-rose-100 text-rose-700 font-bold rounded-full text-[10px]">
+                {preflightSummary.errorsCount}
+              </span>
+            ) : preflightSummary.warningsCount > 0 ? (
+              <span className="ml-1 px-1.5 py-0.2 bg-amber-100 text-amber-800 font-bold rounded-full text-[10px]">
+                {preflightSummary.warningsCount}
+              </span>
+            ) : (
+              <span className="ml-1 px-1.5 py-0.2 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[10px]">
+                ✓
+              </span>
+            )}
           </button>
         </div>
 
-        <div className="hidden sm:flex items-center space-x-3 text-[11px] text-slate-500 py-1">
+        <div className="hidden lg:flex items-center space-x-3 text-[11px] text-slate-500 py-1 shrink-0">
           <span>{wordsCount.toLocaleString()} words</span>
           <span>•</span>
           <span>{placements.length} {placements.length === 1 ? 'placement' : 'placements'}</span>
-          <span>•</span>
-          <span>{chapterHeadingsCount} {chapterHeadingsCount === 1 ? 'chapter' : 'chapters'}</span>
         </div>
       </div>
 
@@ -318,141 +412,123 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
                 return (
                   <div
                     key={block.id || idx}
-                    data-testid="structured-block"
-                    className={`p-3.5 rounded-xl border text-xs space-y-2.5 transition-shadow ${
-                      block.type === 'chapter-heading'
-                        ? 'bg-indigo-50/70 border-indigo-200 text-indigo-950 font-semibold'
-                        : 'bg-white border-slate-200 text-slate-700'
-                    }`}
+                    className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2.5 transition-shadow hover:shadow-xs"
                   >
-                    <div className="flex items-center justify-between text-[10px] text-slate-400">
-                      <span className="uppercase font-bold tracking-wider text-indigo-600">
-                        {block.type === 'chapter-heading' ? 'Chapter Heading' : 'Paragraph'}
-                      </span>
-                      <span>Block #{idx + 1}</span>
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold border-b border-slate-200/60 pb-1.5">
+                      <div className="flex items-center space-x-1.5">
+                        <span className="font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
+                          #{idx + 1}
+                        </span>
+                        <span
+                          className={`uppercase tracking-wider ${
+                            block.type === 'chapter-heading' ? 'text-amber-700 font-bold' : 'text-slate-600'
+                          }`}
+                        >
+                          {block.type === 'chapter-heading' ? 'Chapter Heading' : 'Paragraph'}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] text-slate-400">ID: {block.id}</span>
                     </div>
 
-                    <p className={block.type === 'chapter-heading' ? 'text-sm font-bold' : 'leading-relaxed'}>
+                    <p className={`text-slate-800 ${block.type === 'chapter-heading' ? 'font-bold text-sm text-slate-900' : 'leading-relaxed'}`}>
                       {block.text}
                     </p>
 
-                    {/* Anchored Image Placements List */}
+                    {/* Placements anchored to this block */}
                     {blockPlacements.length > 0 && (
                       <div className="pt-2 border-t border-slate-200/60 space-y-2">
-                        <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
-                          Anchored Placements:
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                          Anchored Images ({blockPlacements.length}):
                         </span>
-                        <div className="space-y-1.5">
-                          {blockPlacements.map((plc) => {
-                            const img = images.find((i) => i.id === plc.imageId);
-                            const isSelected = selectedPlacementId === plc.id;
-                            return (
-                              <div
-                                key={plc.id}
-                                className={`flex items-center justify-between p-2 rounded-lg border transition-all ${
-                                  isSelected
-                                    ? 'bg-indigo-50 border-indigo-500 ring-1 ring-indigo-500'
-                                    : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                                }`}
-                              >
-                                <div className="flex items-center space-x-2.5 truncate">
-                                  {img && (
-                                    <img
-                                      src={img.dataUrl}
-                                      alt={img.filename}
-                                      className="w-8 h-8 rounded object-cover border border-slate-200 shrink-0"
-                                    />
-                                  )}
-                                  <div className="truncate">
-                                    <p className="font-bold text-slate-900 truncate">
-                                      {img?.filename || 'Image'}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 capitalize">
-                                      Mode: {plc.mode} • Width: {plc.widthPercent}%
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-center space-x-1 shrink-0 ml-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => onSelectPlacement && onSelectPlacement(plc.id)}
-                                    aria-label={`Inspect placement for ${img?.filename}`}
-                                    className="p-1.5 text-indigo-600 hover:bg-indigo-100 rounded"
-                                    title="Edit Size & Crop"
-                                  >
-                                    <Sliders className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemovePlacement(plc.id)}
-                                    aria-label={`Remove placement for ${img?.filename}`}
-                                    className="p-1.5 text-rose-600 hover:bg-rose-100 rounded"
-                                    title="Remove Placement"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
+                        {blockPlacements.map((p) => {
+                          const img = images.find((i) => i.id === p.imageId);
+                          const isSelected = selectedPlacementId === p.id;
+                          return (
+                            <div
+                              key={p.id}
+                              className={`flex items-center justify-between p-2 rounded-lg border text-xs transition-colors ${
+                                isSelected ? 'bg-indigo-50 border-indigo-300 ring-1 ring-indigo-400' : 'bg-white border-slate-200'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-2.5 overflow-hidden">
+                                {img && (
+                                  <img
+                                    src={img.dataUrl}
+                                    alt={p.caption || img.filename}
+                                    className="w-9 h-9 rounded object-cover border border-slate-200 shrink-0"
+                                  />
+                                )}
+                                <div className="truncate">
+                                  <p className="font-bold text-slate-900 truncate">
+                                    {img ? img.filename : 'Unknown Image'}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    Mode: <span className="font-semibold uppercase">{p.mode}</span> • Width: {p.widthPercent}%
+                                  </p>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
+
+                              <div className="flex items-center space-x-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => onSelectPlacement && onSelectPlacement(p.id)}
+                                  className="px-2 py-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded"
+                                >
+                                  Inspect
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePlacement(p.id)}
+                                  aria-label="Remove image placement"
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
 
-                    {/* Quick Insert Image Button */}
-                    <div className="pt-1 flex items-center justify-between">
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setInsertDropdownBlockId(isDropdownOpen ? null : block.id)}
-                          aria-label={`Insert image after block ${idx + 1}`}
-                          className="inline-flex items-center space-x-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 px-2 py-1 rounded transition-colors"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Insert Image After Block</span>
-                        </button>
+                    {/* Quick Insert Image Action for this block */}
+                    <div className="relative pt-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setInsertDropdownBlockId(isDropdownOpen ? null : block.id)}
+                        className="inline-flex items-center space-x-1 text-[11px] font-semibold text-indigo-600 hover:text-indigo-800 p-1 rounded hover:bg-indigo-50/50"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Insert Image After Block</span>
+                      </button>
 
-                        {/* Quick Pick Dropdown */}
-                        {isDropdownOpen && (
-                          <div className="absolute left-0 mt-1 w-64 bg-white border border-slate-200 rounded-lg shadow-lg z-30 p-2 space-y-1">
-                            <span className="block text-[10px] font-bold text-slate-500 uppercase px-2 py-1">
-                              Select from Library:
-                            </span>
-                            {images.length === 0 ? (
-                              <div className="p-2 text-center text-[11px] text-slate-500">
-                                <p>Library is empty.</p>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setInsertDropdownBlockId(null);
-                                    setActiveTab('images');
-                                  }}
-                                  className="mt-1 text-indigo-600 underline font-semibold"
-                                >
-                                  Upload an image first
-                                </button>
-                              </div>
-                            ) : (
-                              images.map((img) => (
-                                <button
-                                  key={img.id}
-                                  type="button"
-                                  onClick={() => handleQuickInsertForBlock(block.id, img.id)}
-                                  className="w-full flex items-center space-x-2 p-1.5 rounded hover:bg-indigo-50 text-left text-slate-800 transition-colors"
-                                >
-                                  <img
-                                    src={img.dataUrl}
-                                    alt={img.filename}
-                                    className="w-7 h-7 rounded object-cover border border-slate-200 shrink-0"
-                                  />
-                                  <span className="truncate text-xs font-medium">{img.filename}</span>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      {/* Dropdown menu */}
+                      {isDropdownOpen && (
+                        <div className="absolute right-0 bottom-full mb-1 z-30 w-56 bg-white border border-slate-200 rounded-lg shadow-lg p-1.5 space-y-1">
+                          <p className="text-[10px] font-bold uppercase text-slate-400 px-2 py-1">
+                            Choose Image from Library:
+                          </p>
+                          {images.length === 0 ? (
+                            <p className="text-xs text-slate-500 px-2 py-1.5">No images uploaded yet.</p>
+                          ) : (
+                            images.map((img) => (
+                              <button
+                                key={img.id}
+                                type="button"
+                                onClick={() => handleQuickInsertForBlock(block.id, img.id)}
+                                className="w-full flex items-center space-x-2 p-1.5 rounded hover:bg-indigo-50 text-left text-slate-800 transition-colors"
+                              >
+                                <img
+                                  src={img.dataUrl}
+                                  alt={img.filename}
+                                  className="w-7 h-7 rounded object-cover border border-slate-200 shrink-0"
+                                />
+                                <span className="truncate text-xs font-medium">{img.filename}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -470,6 +546,26 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
             onUpdateImage={handleUpdateImage}
             onDeleteImage={handleDeleteImage}
             onInsertPlacement={handleInsertPlacement}
+          />
+        )}
+
+        {activeTab === 'typography' && (
+          <TypographyPanel
+            template={template}
+            typographyOverrides={book.typography}
+            authorName={book.author}
+            onUpdateTypography={handleUpdateTypography}
+            onResetTypography={handleResetTypography}
+          />
+        )}
+
+        {activeTab === 'preflight' && (
+          <PreflightPanel
+            summary={preflightSummary}
+            isAcknowledged={isAcknowledged}
+            onToggleAcknowledge={onToggleAcknowledge}
+            onTriggerExport={onTriggerExport}
+            onExecuteAction={onExecuteAction}
           />
         )}
       </div>

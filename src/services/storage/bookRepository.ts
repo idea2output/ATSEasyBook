@@ -38,11 +38,14 @@ export class LocalStorageBookRepository implements IBookRepository {
       const data = window.localStorage.getItem(STORAGE_KEY);
       if (!data) return [];
       const rawBooks = JSON.parse(data) as any[];
-      // Safe backward compatibility migration: default missing Phase 2 fields
+      // Safe backward compatibility migration: default missing Phase 2 & Phase 3 fields
       return rawBooks.map((b) => ({
         ...b,
+        author: b.author || '',
         images: Array.isArray(b.images) ? b.images : [],
         placements: Array.isArray(b.placements) ? b.placements : [],
+        typography: b.typography || {},
+        exportOptions: b.exportOptions || { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
         formattedBlocks: Array.isArray(b.formattedBlocks)
           ? b.formattedBlocks
           : parseManuscript(b.rawManuscript || ''),
@@ -50,6 +53,24 @@ export class LocalStorageBookRepository implements IBookRepository {
     } catch (err) {
       console.error('Failed to parse books from localStorage', err);
       return [];
+    }
+  }
+
+  getStorageUsage(): { usedBytes: number; quotaBytes: number; usedPercent: number; isNearQuota: boolean } {
+    if (!this.isBrowser()) return { usedBytes: 0, quotaBytes: 5242880, usedPercent: 0, isNearQuota: false };
+    try {
+      const data = window.localStorage.getItem(STORAGE_KEY) || '';
+      const usedBytes = new Blob([data]).size;
+      const quotaBytes = 5 * 1024 * 1024; // typical 5MB default browser localStorage quota
+      const usedPercent = Math.min(100, Math.round((usedBytes / quotaBytes) * 100));
+      return {
+        usedBytes,
+        quotaBytes,
+        usedPercent,
+        isNearQuota: usedPercent > 70,
+      };
+    } catch {
+      return { usedBytes: 0, quotaBytes: 5242880, usedPercent: 0, isNearQuota: false };
     }
   }
 
@@ -78,8 +99,11 @@ export class LocalStorageBookRepository implements IBookRepository {
     const books = this.getStoredBooks();
     const updatedBook: BookProject = {
       ...book,
+      author: book.author || '',
       images: Array.isArray(book.images) ? book.images : [],
       placements: Array.isArray(book.placements) ? book.placements : [],
+      typography: book.typography || {},
+      exportOptions: book.exportOptions || { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
       updatedAt: new Date().toISOString(),
       formattedBlocks: parseManuscript(book.rawManuscript || ''),
     };
@@ -105,18 +129,21 @@ export class LocalStorageBookRepository implements IBookRepository {
     this.saveStoredBooks(filtered);
   }
 
-  async createBook(title: string = 'Untitled Manuscript'): Promise<BookProject> {
+  async createBook(title: string = 'Untitled Manuscript', author: string = 'Anonymous'): Promise<BookProject> {
     const now = new Date().toISOString();
     const id = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
     const newBook: BookProject = {
       id,
       title: title || 'Untitled Manuscript',
+      author: author || 'Anonymous',
       rawManuscript: '',
       templateId: 'classic-novel-6x9',
       formattedBlocks: [],
       images: [],
       placements: [],
+      typography: {},
+      exportOptions: { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
       createdAt: now,
       updatedAt: now,
     };
@@ -141,11 +168,14 @@ export class LocalStorageBookRepository implements IBookRepository {
     const sampleBook: BookProject = {
       id: `sample-eldridge-voyage`,
       title: 'The Eldridge Voyage (Sample Novel)',
+      author: 'Amjad Vance',
       rawManuscript: SAMPLE_MANUSCRIPT,
       templateId: 'classic-novel-6x9',
       formattedBlocks: parseManuscript(SAMPLE_MANUSCRIPT),
       images: [],
       placements: [],
+      typography: {},
+      exportOptions: { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
       isSample: true,
       createdAt: now,
       updatedAt: now,

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { PagePreviewData, BookTemplate } from '@/types/book';
+import { PagePreviewData, BookTemplate, TypographySettings } from '@/types/book';
 import { BookPage } from './BookPage';
 import {
   ChevronLeft,
@@ -20,6 +20,8 @@ interface BookSpreadPreviewProps {
   pages: PagePreviewData[];
   template: BookTemplate;
   bookTitle?: string;
+  authorName?: string;
+  typographyOverrides?: Partial<TypographySettings>;
   selectedPlacementId?: string | null;
   onSelectPlacement?: (placementId: string) => void;
 }
@@ -28,6 +30,8 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
   pages,
   template,
   bookTitle,
+  authorName,
+  typographyOverrides,
   selectedPlacementId = null,
   onSelectPlacement,
 }) => {
@@ -308,6 +312,8 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
               <BookPage
                 page={activeSpread?.left}
                 template={template}
+                authorName={authorName}
+                typographyOverrides={typographyOverrides}
                 isPlaceholder={!activeSpread?.left}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={onSelectPlacement}
@@ -320,6 +326,8 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
               <BookPage
                 page={activeSpread?.right}
                 template={template}
+                authorName={authorName}
+                typographyOverrides={typographyOverrides}
                 isPlaceholder={!activeSpread?.right}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={onSelectPlacement}
@@ -331,6 +339,8 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
               <BookPage
                 page={activeSinglePage}
                 template={template}
+                authorName={authorName}
+                typographyOverrides={typographyOverrides}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={onSelectPlacement}
               />
