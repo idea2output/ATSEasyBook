@@ -4,11 +4,12 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PublicNavbar } from '@/components/public/PublicNavbar';
 import { HeroSection } from '@/components/public/HeroSection';
-import { ProductDemoSection } from '@/components/public/ProductDemoSection';
+import { AudienceSection } from '@/components/public/AudienceSection';
 import { ProductsSection } from '@/components/public/ProductsSection';
-import { ComingSoonSection } from '@/components/public/ComingSoonSection';
 import { HowItWorksSection } from '@/components/public/HowItWorksSection';
+import { ComingSoonSection } from '@/components/public/ComingSoonSection';
 import { PricingSection } from '@/components/public/PricingSection';
+import { FinalCtaSection } from '@/components/public/FinalCtaSection';
 import { PublicFooter } from '@/components/public/PublicFooter';
 import { bookRepository } from '@/services/storage/bookRepository';
 
@@ -28,34 +29,37 @@ export default function AtsTechHomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#030712] text-white selection:bg-rose-600 selection:text-white">
-      {/* Public Marketing Navigation */}
+    <div className="min-h-screen flex flex-col bg-black text-white selection:bg-rose-600 selection:text-white">
+      {/* A. Header */}
       <PublicNavbar onSampleBookLaunch={handleLoadSampleBook} />
 
       <main className="flex-1">
-        {/* 1. Hero Section */}
+        {/* B. Hero Section with Customer-Focused Messaging & Real Product Demo */}
         <HeroSection
           onLoadSampleBook={handleLoadSampleBook}
           isCreatingBook={isCreatingBook}
         />
 
-        {/* 2. Interactive Product Demonstration */}
-        <ProductDemoSection />
+        {/* C. Two Audience Paths (Authors & Publishers / Print Professionals) */}
+        <AudienceSection />
 
-        {/* 3. Available Products (EasyBook & Imposition) */}
+        {/* D. Featured Products (ATS EasyBook & ATS Imposition) */}
         <ProductsSection />
 
-        {/* 4. Coming Soon (12 Modules) */}
-        <ComingSoonSection />
-
-        {/* 5. How It Works Workflow Pipeline */}
+        {/* E. How ATS Tech Works (Create -> Design -> Preflight -> Export -> Print) */}
         <HowItWorksSection />
 
-        {/* 6. Planned Credit Model Pricing */}
+        {/* F. Coming Soon (12 Modules with Category Filtering & Early Access Form) */}
+        <ComingSoonSection />
+
+        {/* G. Credits / Pricing Preview (Free Proof vs Print-Ready Export) */}
         <PricingSection />
+
+        {/* H. Final CTA */}
+        <FinalCtaSection />
       </main>
 
-      {/* Public Footer */}
+      {/* Footer */}
       <PublicFooter />
     </div>
   );
