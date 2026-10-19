@@ -22,6 +22,9 @@ import { BookSpreadPreview } from '@/components/preview/BookSpreadPreview';
 import { ImageInspector } from '@/components/images/ImageInspector';
 import { PdfExportModal } from '@/components/export/PdfExportModal';
 import { EpubExportModal } from '@/components/export/EpubExportModal';
+import { ProjectSharingModal } from '@/components/collaboration/ProjectSharingModal';
+import { ExportJobHistoryModal } from '@/components/jobs/ExportJobHistoryModal';
+import { PrintOrderModal } from '@/components/print/PrintOrderModal';
 import {
   ArrowLeft,
   Loader2,
@@ -34,6 +37,9 @@ import {
   AlertTriangle,
   Sliders,
   BookOpen,
+  Share2,
+  Clock,
+  Package,
 } from 'lucide-react';
 
 export default function BookEditorPage() {
@@ -60,6 +66,9 @@ export default function BookEditorPage() {
   // Export Modal state & Warning Acknowledgement
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [isEpubModalOpen, setIsEpubModalOpen] = useState<boolean>(false);
+  const [isSharingModalOpen, setIsSharingModalOpen] = useState<boolean>(false);
+  const [isJobModalOpen, setIsJobModalOpen] = useState<boolean>(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState<boolean>(false);
   const [isAcknowledgedWarnings, setIsAcknowledgedWarnings] = useState<boolean>(false);
 
   // Ref for debounced autosave timer
@@ -474,6 +483,40 @@ export default function BookEditorPage() {
             <span>Export EPUB 3</span>
           </button>
 
+          {/* Phase 6 Toolbar Buttons: Share & Roles, Background Jobs Queue, Print POD Order */}
+          <button
+            type="button"
+            id="editor-share-team-btn"
+            onClick={() => setIsSharingModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors shadow-xs"
+            title="Invite collaborators & manage permissions"
+          >
+            <Share2 className="w-3.5 h-3.5 text-indigo-600" />
+            <span className="hidden xl:inline">Share</span>
+          </button>
+
+          <button
+            type="button"
+            id="editor-export-queue-btn"
+            onClick={() => setIsJobModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors shadow-xs"
+            title="View background export jobs & signed downloads"
+          >
+            <Clock className="w-3.5 h-3.5 text-slate-600" />
+            <span className="hidden xl:inline">Jobs</span>
+          </button>
+
+          <button
+            type="button"
+            id="editor-print-order-btn"
+            onClick={() => setIsPrintModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition-colors shadow-xs"
+            title="Simulate Print-on-Demand order & press validation"
+          >
+            <Package className="w-3.5 h-3.5 text-amber-600" />
+            <span className="hidden xl:inline">Print POD</span>
+          </button>
+
           {/* View Layout Mode Buttons (Split / Editor Only / Preview Only) */}
           <div className="hidden sm:flex items-center space-x-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs" role="group" aria-label="Layout view mode">
             <button
@@ -568,6 +611,9 @@ export default function BookEditorPage() {
                   onSelectPlacement={setSelectedPlacementId}
                   activeTab={activeEditorTab}
                   onTabChange={setActiveEditorTab}
+                  onOpenPrintModal={() => setIsPrintModalOpen(true)}
+                  onOpenSharingModal={() => setIsSharingModalOpen(true)}
+                  onOpenJobModal={() => setIsJobModalOpen(true)}
                 />
               </div>
             </div>
@@ -625,6 +671,36 @@ export default function BookEditorPage() {
           project={book}
           template={currentTemplate}
           onClose={() => setIsEpubModalOpen(false)}
+        />
+      )}
+
+      {/* Phase 6 Project Sharing & Permissions Modal */}
+      {isSharingModalOpen && (
+        <ProjectSharingModal
+          isOpen={isSharingModalOpen}
+          projectId={book.id}
+          projectTitle={book.title}
+          onClose={() => setIsSharingModalOpen(false)}
+        />
+      )}
+
+      {/* Phase 6 Background Export Jobs & Signed Downloads Modal */}
+      {isJobModalOpen && (
+        <ExportJobHistoryModal
+          isOpen={isJobModalOpen}
+          projectId={book.id}
+          projectTitle={book.title}
+          onClose={() => setIsJobModalOpen(false)}
+        />
+      )}
+
+      {/* Phase 6 Print-on-Demand Order & Spec Prepress Modal */}
+      {isPrintModalOpen && (
+        <PrintOrderModal
+          isOpen={isPrintModalOpen}
+          project={book}
+          pageCount={pages.length}
+          onClose={() => setIsPrintModalOpen(false)}
         />
       )}
     </div>

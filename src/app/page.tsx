@@ -79,6 +79,7 @@ export default function DashboardPage() {
           <div className="flex items-center space-x-3">
             <button
               type="button"
+              id="load-sample-novel-btn"
               onClick={() => handleCreateNewBook(true)}
               disabled={isCreating}
               className="inline-flex items-center space-x-2 px-3.5 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg shadow-sm hover:bg-slate-50 hover:text-slate-900 transition-colors disabled:opacity-50"
@@ -89,6 +90,7 @@ export default function DashboardPage() {
 
             <button
               type="button"
+              id="create-new-book-btn"
               onClick={() => router.push('/books/new')}
               className="inline-flex items-center space-x-2 px-4 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
@@ -139,6 +141,7 @@ export default function DashboardPage() {
               </button>
               <button
                 type="button"
+                id="load-sample-novel-btn-empty"
                 onClick={() => handleCreateNewBook(true)}
                 className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-4 py-2.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors"
               >

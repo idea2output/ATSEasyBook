@@ -34,6 +34,20 @@ export const BookCard: React.FC<BookCardProps> = ({ book, onDelete }) => {
               <span className="inline-block text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
                 {template.name}
               </span>
+              <div className="flex items-center space-x-1.5 mt-1">
+                {book.storageBackend === 'cloud' ? (
+                  <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                    Cloud {book.currentUserRole ? `• ${book.currentUserRole}` : ''}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded">
+                    Local-only
+                  </span>
+                )}
+                {book.revision ? (
+                  <span className="text-[10px] font-mono text-slate-400">r{book.revision}</span>
+                ) : null}
+              </div>
             </div>
           </div>
 

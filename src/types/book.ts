@@ -346,4 +346,16 @@ export interface BookProject {
   isSample?: boolean;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601
+  // Phase 6 Cloud & Collaboration
+  ownerId?: string;
+  organizationId?: string;
+  revision?: number; // optimistic concurrency control token
+  storageBackend?: 'local' | 'cloud';
+  lastEditedBy?: {
+    userId: string;
+    displayName: string;
+    email: string;
+  };
+  currentUserRole?: 'owner' | 'editor' | 'reviewer' | 'viewer' | 'administrator';
 }
+

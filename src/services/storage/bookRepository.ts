@@ -1,5 +1,7 @@
 import { BookProject, EditorMode } from '@/types/book';
 import { parseManuscript } from '../formatting/manuscriptParser';
+import { cloudProjectService, ProjectAccessContext } from '../cloud/cloudProjectService';
+import { UserProfile } from '@/types/auth';
 
 export interface IBookRepository {
   getAllBooks(): Promise<BookProject[]>;
@@ -17,6 +19,7 @@ export interface IBookRepository {
 }
 
 const STORAGE_KEY = 'ats_easybook_projects_v1';
+const AUTH_STORAGE_KEY = 'ats_auth_session_v1';
 
 export const SAMPLE_MANUSCRIPT = `Chapter 1: The First Departure
 
@@ -37,13 +40,13 @@ export class LocalStorageBookRepository implements IBookRepository {
     return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
   }
 
-  private getStoredBooks(): BookProject[] {
+  public getStoredBooks(): BookProject[] {
     if (!this.isBrowser()) return [];
     try {
       const data = window.localStorage.getItem(STORAGE_KEY);
       if (!data) return [];
       const rawBooks = JSON.parse(data) as any[];
-      // Safe backward compatibility migration: default missing Phase 2, 3, & 4 fields
+      // Safe backward compatibility migration: default missing Phase 2, 3, 4, 5 & 6 fields
       return rawBooks.map((b) => ({
         ...b,
         author: b.author || '',
@@ -54,7 +57,8 @@ export class LocalStorageBookRepository implements IBookRepository {
         placements: Array.isArray(b.placements) ? b.placements : [],
         typography: b.typography || {},
         exportOptions: b.exportOptions || { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
-        formattedBlocks: Array.isArray(b.formattedBlocks)
+        storageBackend: 'local' as const,
+        formattedBlocks: Array.isArray(b.formattedBlocks) && b.formattedBlocks.length > 0
           ? b.formattedBlocks
           : parseManuscript(b.rawManuscript || ''),
       })) as BookProject[];
@@ -82,7 +86,7 @@ export class LocalStorageBookRepository implements IBookRepository {
     }
   }
 
-  private saveStoredBooks(books: BookProject[]): void {
+  public saveStoredBooks(books: BookProject[]): void {
     if (!this.isBrowser()) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
@@ -93,7 +97,6 @@ export class LocalStorageBookRepository implements IBookRepository {
 
   async getAllBooks(): Promise<BookProject[]> {
     const books = this.getStoredBooks();
-    // Sort by updatedAt descending
     return books.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }
 
@@ -116,6 +119,7 @@ export class LocalStorageBookRepository implements IBookRepository {
       typography: book.typography || {},
       exportOptions: book.exportOptions || { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
       updatedAt: new Date().toISOString(),
+      storageBackend: 'local',
       formattedBlocks: parseManuscript(book.rawManuscript || ''),
     };
 
@@ -141,10 +145,10 @@ export class LocalStorageBookRepository implements IBookRepository {
   }
 
   async createBook(
-    title: string = 'Untitled Manuscript',
-    author: string = 'Anonymous',
-    templateId: string = 'classic-novel-6x9',
-    editorMode: EditorMode = 'beginner'
+    title?: string,
+    author?: string,
+    templateId?: string,
+    editorMode?: EditorMode
   ): Promise<BookProject> {
     const now = new Date().toISOString();
     const id = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -163,6 +167,7 @@ export class LocalStorageBookRepository implements IBookRepository {
       placements: [],
       typography: {},
       exportOptions: { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
+      storageBackend: 'local',
       createdAt: now,
       updatedAt: now,
     };
@@ -199,6 +204,7 @@ export class LocalStorageBookRepository implements IBookRepository {
       typography: {},
       exportOptions: { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
       isSample: true,
+      storageBackend: 'local',
       createdAt: now,
       updatedAt: now,
     };
@@ -209,4 +215,211 @@ export class LocalStorageBookRepository implements IBookRepository {
   }
 }
 
-export const bookRepository = new LocalStorageBookRepository();
+export class CloudBookRepository implements IBookRepository {
+  private userContext: ProjectAccessContext;
+
+  constructor(userContext: ProjectAccessContext) {
+    this.userContext = userContext;
+  }
+
+  public setUserContext(userContext: ProjectAccessContext): void {
+    this.userContext = userContext;
+  }
+
+  async getAllBooks(): Promise<BookProject[]> {
+    return cloudProjectService.listProjectsForUser(this.userContext);
+  }
+
+  async getBookById(id: string): Promise<BookProject | null> {
+    return cloudProjectService.getProjectById(id, this.userContext);
+  }
+
+  async saveBook(book: BookProject): Promise<BookProject> {
+    const existing = await cloudProjectService.getProjectById(book.id, this.userContext);
+    if (existing) {
+      return cloudProjectService.updateProject(book.id, book, this.userContext, book.revision);
+    }
+    return cloudProjectService.createProject(book, this.userContext);
+  }
+
+  saveBookSync(book: BookProject): BookProject {
+    // For sync calls, fire async and return optimistic state
+    this.saveBook(book).catch((err) => console.error('Cloud save failed:', err));
+    return { ...book, storageBackend: 'cloud', updatedAt: new Date().toISOString() };
+  }
+
+  async deleteBook(id: string): Promise<void> {
+    await cloudProjectService.deleteProject(id, this.userContext);
+  }
+
+  async createBook(
+    title?: string,
+    author?: string,
+    templateId?: string,
+    editorMode?: EditorMode
+  ): Promise<BookProject> {
+    const now = new Date().toISOString();
+    const id = `book-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+    const newBook: BookProject = {
+      id,
+      title: title || 'Untitled Manuscript',
+      author: author || 'Anonymous',
+      rawManuscript: '',
+      templateId: templateId || 'classic-novel-6x9',
+      editorMode: editorMode || 'beginner',
+      design: {},
+      customFonts: [],
+      formattedBlocks: [],
+      images: [],
+      placements: [],
+      typography: {},
+      exportOptions: { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    return cloudProjectService.createProject(newBook, this.userContext);
+  }
+
+  async getOrCreateSampleBook(): Promise<BookProject> {
+    const list = await cloudProjectService.listProjectsForUser(this.userContext);
+    const existing = list.find((b) => b.isSample || b.title === 'The Eldridge Voyage (Sample Novel)');
+    if (existing) return existing;
+
+    const now = new Date().toISOString();
+    const sampleBook: BookProject = {
+      id: `sample-eldridge-voyage`,
+      title: 'The Eldridge Voyage (Sample Novel)',
+      author: 'Amjad Vance',
+      rawManuscript: SAMPLE_MANUSCRIPT,
+      templateId: 'classic-novel-6x9',
+      editorMode: 'beginner',
+      design: {},
+      customFonts: [],
+      formattedBlocks: parseManuscript(SAMPLE_MANUSCRIPT),
+      images: [],
+      placements: [],
+      typography: {},
+      exportOptions: { includeBleed: false, includeCropMarks: false, acknowledgedWarnings: false },
+      isSample: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    return cloudProjectService.createProject(sampleBook, this.userContext);
+  }
+}
+
+/**
+ * Unified Repository Manager that seamlessly switches between Cloud and Local repositories.
+ */
+export class UnifiedBookRepositoryManager implements IBookRepository {
+  private localRepo: LocalStorageBookRepository;
+  private currentUser: ProjectAccessContext | null = null;
+  private cloudRepo: CloudBookRepository | null = null;
+
+  constructor() {
+    this.localRepo = new LocalStorageBookRepository();
+    this.initUserFromStorage();
+  }
+
+  private initUserFromStorage(): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+        if (raw) {
+          const session = JSON.parse(raw);
+          if (session?.user) {
+            this.setAuthenticatedUser(session.user);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load session from storage', err);
+      }
+    }
+  }
+
+  public setAuthenticatedUser(user: UserProfile | null): void {
+    if (user) {
+      this.currentUser = {
+        userId: user.id,
+        userEmail: user.email,
+        displayName: user.displayName,
+        globalRole: user.role,
+      };
+      if (this.cloudRepo) {
+        this.cloudRepo.setUserContext(this.currentUser);
+      } else {
+        this.cloudRepo = new CloudBookRepository(this.currentUser);
+      }
+    } else {
+      this.currentUser = null;
+      this.cloudRepo = null;
+    }
+  }
+
+  public getActiveUser(): ProjectAccessContext | null {
+    return this.currentUser;
+  }
+
+  public isAuthenticated(): boolean {
+    return this.currentUser !== null;
+  }
+
+  public getLocalRepository(): LocalStorageBookRepository {
+    return this.localRepo;
+  }
+
+  public getCloudRepository(): CloudBookRepository | null {
+    return this.cloudRepo;
+  }
+
+  private getActiveRepo(): IBookRepository {
+    if (this.cloudRepo && this.currentUser) {
+      return this.cloudRepo;
+    }
+    return this.localRepo;
+  }
+
+  async getAllBooks(): Promise<BookProject[]> {
+    return this.getActiveRepo().getAllBooks();
+  }
+
+  async getBookById(id: string): Promise<BookProject | null> {
+    // If not found in active repo, check local repo as fallback
+    const book = await this.getActiveRepo().getBookById(id);
+    if (book) return book;
+    if (this.cloudRepo) {
+      return this.localRepo.getBookById(id);
+    }
+    return null;
+  }
+
+  async saveBook(book: BookProject): Promise<BookProject> {
+    return this.getActiveRepo().saveBook(book);
+  }
+
+  saveBookSync(book: BookProject): BookProject {
+    return this.getActiveRepo().saveBookSync(book);
+  }
+
+  async deleteBook(id: string): Promise<void> {
+    await this.getActiveRepo().deleteBook(id);
+  }
+
+  async createBook(
+    title?: string,
+    author?: string,
+    templateId?: string,
+    editorMode?: EditorMode
+  ): Promise<BookProject> {
+    return this.getActiveRepo().createBook(title, author, templateId, editorMode);
+  }
+
+  async getOrCreateSampleBook(): Promise<BookProject> {
+    return this.getActiveRepo().getOrCreateSampleBook();
+  }
+}
+
+export const bookRepository = new UnifiedBookRepositoryManager();

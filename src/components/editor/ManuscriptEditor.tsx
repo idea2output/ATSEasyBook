@@ -27,6 +27,8 @@ import { LanguageSettingsPanel } from '@/components/language/LanguageSettingsPan
 import { HindiPublishingPanel } from '@/components/hindi/HindiPublishingPanel';
 import { EpubExportModal } from '@/components/export/EpubExportModal';
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
+import { CommentsPanel } from '@/components/collaboration/CommentsPanel';
+import { VersionHistoryPanel } from '@/components/version/VersionHistoryPanel';
 import {
   Save,
   Check,
@@ -48,6 +50,10 @@ import {
   Globe,
   Keyboard,
   BookOpen,
+  MessageSquare,
+  History,
+  Package,
+  Lock,
 } from 'lucide-react';
 
 export type EditorTabType =
@@ -60,7 +66,10 @@ export type EditorTabType =
   | 'color'
   | 'language'
   | 'hindi'
-  | 'preflight';
+  | 'preflight'
+  | 'comments'
+  | 'versions'
+  | 'print';
 
 interface ManuscriptEditorProps {
   book: BookProject;
@@ -81,6 +90,9 @@ interface ManuscriptEditorProps {
   onSelectPlacement?: (placementId: string | null) => void;
   activeTab?: EditorTabType;
   onTabChange?: (tab: EditorTabType) => void;
+  onOpenPrintModal?: () => void;
+  onOpenSharingModal?: () => void;
+  onOpenJobModal?: () => void;
 }
 
 export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
@@ -102,12 +114,18 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   onSelectPlacement,
   activeTab: controlledTab,
   onTabChange,
+  onOpenPrintModal,
+  onOpenSharingModal,
+  onOpenJobModal,
 }) => {
   const [internalTab, setInternalTab] = useState<EditorTabType>('raw');
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState<boolean>(false);
   const [isEpubModalOpen, setIsEpubModalOpen] = useState<boolean>(false);
 
   const isExpert = book.editorMode === 'expert';
+  const isViewer = book.currentUserRole === 'viewer';
+  const isReviewer = book.currentUserRole === 'reviewer';
+
   const rawActiveTab = controlledTab || internalTab;
   const activeTab = !isExpert && (rawActiveTab === 'design' || rawActiveTab === 'fonts' || rawActiveTab === 'color')
     ? 'typography'
@@ -210,38 +228,45 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
           <div className="sm:col-span-5">
             <label htmlFor="book-title-input" className="block text-xs font-semibold text-slate-700 mb-1">
-              Book Title
+              Book Title {isViewer && <span className="text-amber-600 font-normal">(Read-Only)</span>}
             </label>
             <input
               id="book-title-input"
               type="text"
+              disabled={isViewer}
               value={book.title}
               onChange={(e) => onUpdateBook({ title: e.target.value })}
               placeholder="e.g. The Eldridge Voyage"
               aria-label="Book Title"
-              className="w-full text-sm font-semibold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="w-full text-sm font-semibold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
 
           <div className="sm:col-span-4">
             <label htmlFor="book-author-input" className="block text-xs font-semibold text-slate-700 mb-1">
-              Author Name
+              Author Name {isViewer && <span className="text-amber-600 font-normal">(Read-Only)</span>}
             </label>
             <input
               id="book-author-input"
               type="text"
+              disabled={isViewer}
               value={book.author || ''}
               onChange={(e) => onUpdateBook({ author: e.target.value })}
               placeholder="e.g. Captain Arthur Vance"
               aria-label="Author Name"
-              className="w-full text-sm text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="w-full text-sm text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
             />
           </div>
 
           <div className="sm:col-span-3 flex items-end justify-between sm:justify-end space-x-2">
             {/* Save Status Indicator */}
             <div className="flex items-center space-x-1.5 text-xs text-slate-500 px-1 py-1">
-              {isSaving ? (
+              {isViewer ? (
+                <span className="text-amber-600 font-medium flex items-center space-x-1">
+                  <Lock className="w-3 h-3" />
+                  <span>Viewer</span>
+                </span>
+              ) : isSaving ? (
                 <>
                   <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                   <span>Saving...</span>
@@ -265,7 +290,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             <button
               type="button"
               onClick={onSave}
-              disabled={isSaving}
+              disabled={isSaving || isViewer}
               aria-label="Save manuscript now"
               className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:opacity-50"
             >
@@ -283,9 +308,10 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             </label>
             <select
               id="template-select"
+              disabled={isViewer || isReviewer}
               value={book.templateId}
               onChange={(e) => onUpdateBook({ templateId: e.target.value })}
-              className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+              className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
             >
               {allTemplates.map((tmpl) => (
                 <option key={tmpl.id} value={tmpl.id}>
@@ -294,7 +320,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               ))}
             </select>
 
-            {isExpert && (
+            {isExpert && !isViewer && !isReviewer && (
               <button
                 type="button"
                 id="save-as-template-btn"
@@ -335,8 +361,9 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             <button
               type="button"
               onClick={onFormatManuscript}
+              disabled={isViewer}
               aria-label="Format manuscript"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500 disabled:opacity-50"
             >
               <Wand2 className="w-3.5 h-3.5" />
               <span>Format manuscript</span>
@@ -541,6 +568,54 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               </span>
             )}
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            id="tab-comments"
+            aria-selected={activeTab === 'comments'}
+            onClick={() => setActiveTab('comments')}
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              activeTab === 'comments'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Comments</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            id="tab-versions"
+            aria-selected={activeTab === 'versions'}
+            onClick={() => setActiveTab('versions')}
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              activeTab === 'versions'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <History className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Versions</span>
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            id="tab-print"
+            aria-selected={activeTab === 'print'}
+            onClick={() => setActiveTab('print')}
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+              activeTab === 'print'
+                ? 'border-amber-600 text-amber-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5 text-amber-600" />
+            <span>Print Specs</span>
+          </button>
         </div>
 
         <div className="hidden lg:flex items-center space-x-3 text-[11px] text-slate-500 py-1 shrink-0">
@@ -554,6 +629,12 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
       <div className="flex-1 p-4 overflow-auto">
         {activeTab === 'raw' && (
           <div className="h-full flex flex-col space-y-2">
+            {isViewer && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800 flex items-center space-x-2">
+                <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>You have <strong>Viewer</strong> access to this project. Manuscript editing is read-only.</span>
+              </div>
+            )}
             <div className="flex items-center justify-between text-xs text-slate-500 px-1">
               <span>
                 Writing Direction: <strong className="uppercase">{docDir}</strong> • Language: <strong className="uppercase">{docLang}</strong>
@@ -569,6 +650,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               id="raw-manuscript-input"
               dir={docDir}
               lang={docLang}
+              readOnly={isViewer}
               value={book.rawManuscript}
               onChange={(e) => onUpdateBook({ rawManuscript: e.target.value })}
               placeholder={
@@ -582,7 +664,9 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
                 textAlign: docDir === 'rtl' ? 'right' : 'left',
                 unicodeBidi: 'plaintext',
               }}
-              className="flex-1 w-full min-h-[350px] p-4 text-sm font-serif leading-relaxed text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-normal"
+              className={`flex-1 w-full min-h-[350px] p-4 text-sm font-serif leading-relaxed text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-normal ${
+                isViewer ? 'bg-slate-50 cursor-not-allowed text-slate-600' : ''
+              }`}
             />
           </div>
         )}
@@ -841,6 +925,100 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             onTriggerExport={onTriggerExport}
             onExecuteAction={onExecuteAction}
           />
+        )}
+
+        {activeTab === 'comments' && (
+          <div className="h-full flex flex-col">
+            <CommentsPanel
+              projectId={book.id}
+              blocks={blocks}
+              images={images}
+              selectedBlockId={null}
+            />
+          </div>
+        )}
+
+        {activeTab === 'versions' && (
+          <div className="h-full flex flex-col">
+            <VersionHistoryPanel
+              project={book}
+              onVersionRestored={(restored) => onUpdateBook(restored)}
+              onDuplicateCreated={(cloned) => {
+                window.location.href = `/books/${cloned.id}`;
+              }}
+            />
+          </div>
+        )}
+
+        {activeTab === 'print' && (
+          <div className="h-full overflow-y-auto space-y-4 p-2">
+            <div className="bg-amber-50/60 border border-amber-200 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Package className="w-5 h-5 text-amber-700" />
+                  <h3 className="font-bold text-slate-900 text-sm">Print Production & Press Readiness</h3>
+                </div>
+                <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2.5 py-1 rounded-full">
+                  POD Ready
+                </span>
+              </div>
+
+              <p className="text-xs text-slate-600">
+                Verify specifications and review prepress readiness for print-on-demand services (e.g. IngramSpark, Lulu, KDP).
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="bg-white p-3 rounded-lg border border-amber-100 space-y-1">
+                  <div className="text-slate-500 font-medium">Trim Dimensions</div>
+                  <div className="font-bold text-slate-800">
+                    {template.pageWidthInches}&quot; × {template.pageHeightInches}&quot; ({template.name})
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-lg border border-amber-100 space-y-1">
+                  <div className="text-slate-500 font-medium">Page Count & Binding</div>
+                  <div className="font-bold text-slate-800">
+                    {pages.length} Pages • {pages.length >= 48 ? 'Perfect Bound Paperback' : 'Saddle Stitch / Staple'}
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-lg border border-amber-100 space-y-1">
+                  <div className="text-slate-500 font-medium">Output Intent & Color Space</div>
+                  <div className="font-bold text-slate-800">
+                    {book.colorSettings?.outputProfileId ? book.colorSettings.outputProfileId.toUpperCase() : 'FOGRA39 / ISO Coated v2 (CMYK)'}
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-lg border border-amber-100 space-y-1">
+                  <div className="text-slate-500 font-medium">Black Overprint (/GS_OP)</div>
+                  <div className="font-bold text-slate-800">
+                    {book.colorSettings?.overprintBlackText !== false ? 'Active (Pure 100K Overprint)' : 'Disabled'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-amber-200/60">
+                <div className="text-xs text-slate-600">
+                  Preflight Status:{' '}
+                  {preflightSummary.errorsCount === 0 ? (
+                    <span className="text-emerald-700 font-semibold">0 Errors (Passed)</span>
+                  ) : (
+                    <span className="text-rose-700 font-semibold">{preflightSummary.errorsCount} Error(s)</span>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  id="open-print-modal-from-tab"
+                  onClick={onOpenPrintModal}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+                >
+                  <Package className="w-3.5 h-3.5" />
+                  <span>Configure Print Order & Validate</span>
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
