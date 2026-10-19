@@ -12,6 +12,8 @@ import {
   TypographySettings,
   PageDesignSettings,
   CustomFont,
+  ManuscriptBlock,
+  BlockType,
 } from '@/types/book';
 import { templateRepository } from '@/services/templates/templateRepository';
 import { createDefaultPlacement } from '@/services/images/imageService';
@@ -21,6 +23,9 @@ import { PreflightPanel } from '@/components/preflight/PreflightPanel';
 import { DesignPanel } from '@/components/design/DesignPanel';
 import { FontManagerPanel } from '@/components/fonts/FontManagerPanel';
 import { ColorManagementPanel } from '@/components/color/ColorManagementPanel';
+import { LanguageSettingsPanel } from '@/components/language/LanguageSettingsPanel';
+import { HindiPublishingPanel } from '@/components/hindi/HindiPublishingPanel';
+import { EpubExportModal } from '@/components/export/EpubExportModal';
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
 import {
   Save,
@@ -40,6 +45,9 @@ import {
   Palette,
   Bookmark,
   Printer,
+  Globe,
+  Keyboard,
+  BookOpen,
 } from 'lucide-react';
 
 export type EditorTabType =
@@ -50,6 +58,8 @@ export type EditorTabType =
   | 'design'
   | 'fonts'
   | 'color'
+  | 'language'
+  | 'hindi'
   | 'preflight';
 
 interface ManuscriptEditorProps {
@@ -95,6 +105,8 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
 }) => {
   const [internalTab, setInternalTab] = useState<EditorTabType>('raw');
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState<boolean>(false);
+  const [isEpubModalOpen, setIsEpubModalOpen] = useState<boolean>(false);
+
   const isExpert = book.editorMode === 'expert';
   const rawActiveTab = controlledTab || internalTab;
   const activeTab = !isExpert && (rawActiveTab === 'design' || rawActiveTab === 'fonts' || rawActiveTab === 'color')
@@ -129,52 +141,76 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   };
 
   const handleDeleteImage = (imageId: string) => {
-    const filteredImages = images.filter((img) => img.id !== imageId);
-    const filteredPlacements = placements.filter((p) => p.imageId !== imageId);
-    if (selectedPlacementId && placements.some((p) => p.id === selectedPlacementId && p.imageId === imageId)) {
-      onSelectPlacement && onSelectPlacement(null);
+    const updatedImages = images.filter((img) => img.id !== imageId);
+    const updatedPlacements = placements.filter((p) => p.imageId !== imageId);
+    if (selectedPlacementId && placements.find((p) => p.id === selectedPlacementId)?.imageId === imageId) {
+      if (onSelectPlacement) onSelectPlacement(null);
     }
-    onUpdateBook({ images: filteredImages, placements: filteredPlacements });
+    onUpdateBook({
+      images: updatedImages,
+      placements: updatedPlacements,
+    });
   };
 
-  const handleInsertPlacement = (placement: ImagePlacement) => {
+  const handlePlacementCreated = (placement: ImagePlacement) => {
     const updatedPlacements = [...placements, placement];
     onUpdateBook({ placements: updatedPlacements });
-    onSelectPlacement && onSelectPlacement(placement.id);
+    if (onSelectPlacement) {
+      onSelectPlacement(placement.id);
+    }
+  };
+
+  const handleInsertPlacement = (imageId: string, anchoredBlockId?: string) => {
+    let targetBlockId = anchoredBlockId;
+    if (!targetBlockId) {
+      targetBlockId = blocks.length > 0 ? blocks[0].id : 'block-0';
+    }
+    const newPlacement = createDefaultPlacement(imageId, targetBlockId);
+    handlePlacementCreated(newPlacement);
   };
 
   const handleRemovePlacement = (placementId: string) => {
-    const filteredPlacements = placements.filter((p) => p.id !== placementId);
-    if (selectedPlacementId === placementId) {
-      onSelectPlacement && onSelectPlacement(null);
+    const updatedPlacements = placements.filter((p) => p.id !== placementId);
+    if (selectedPlacementId === placementId && onSelectPlacement) {
+      onSelectPlacement(null);
     }
-    onUpdateBook({ placements: filteredPlacements });
+    onUpdateBook({ placements: updatedPlacements });
   };
 
   const handleQuickInsertForBlock = (blockId: string, imageId: string) => {
-    const newPlacement = createDefaultPlacement(imageId, blockId, 'inline');
-    handleInsertPlacement(newPlacement);
+    handleInsertPlacement(imageId, blockId);
     setInsertDropdownBlockId(null);
   };
 
-  const handleUpdateTypography = (updated: Partial<TypographySettings>) => {
-    const merged = { ...(book.typography || {}), ...updated };
-    onUpdateBook({ typography: merged });
+  const handleUpdateTypography = (overrides: Partial<TypographySettings>, authorName?: string) => {
+    onUpdateBook({
+      typography: { ...(book.typography || {}), ...overrides },
+      author: authorName !== undefined ? authorName : book.author,
+    });
   };
 
   const handleResetTypography = () => {
-    onUpdateBook({ typography: {} });
+    onUpdateBook({ typography: undefined });
   };
 
+  const handleUpdateBlockSemantic = (blockId: string, updates: Partial<ManuscriptBlock>) => {
+    const updatedBlocks = blocks.map((b) =>
+      b.id === blockId ? { ...b, ...updates, isManualOverride: true } : b
+    );
+    onUpdateBook({ formattedBlocks: updatedBlocks });
+  };
+
+  const docLang = book.languageSettings?.language || 'en';
+  const docDir = book.languageSettings?.direction || 'ltr';
+
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-      {/* Editor Header: Title Input & Quick Actions */}
+    <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden flex flex-col h-full">
+      {/* Editor Header: Title, Author & Metadata Bar */}
       <div className="p-4 border-b border-slate-200 bg-slate-50/50 space-y-3">
-        {/* Title and Author Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-          <div className="sm:col-span-6">
-            <label htmlFor="book-title-input" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Book Project Title
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+          <div className="sm:col-span-5">
+            <label htmlFor="book-title-input" className="block text-xs font-semibold text-slate-700 mb-1">
+              Book Title
             </label>
             <input
               id="book-title-input"
@@ -182,21 +218,23 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               value={book.title}
               onChange={(e) => onUpdateBook({ title: e.target.value })}
               placeholder="e.g. The Eldridge Voyage"
-              className="w-full text-sm sm:text-base font-bold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+              aria-label="Book Title"
+              className="w-full text-sm font-semibold text-slate-900 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             />
           </div>
 
-          <div className="sm:col-span-3">
-            <label htmlFor="book-author-input" className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-              Author
+          <div className="sm:col-span-4">
+            <label htmlFor="book-author-input" className="block text-xs font-semibold text-slate-700 mb-1">
+              Author Name
             </label>
             <input
               id="book-author-input"
               type="text"
               value={book.author || ''}
               onChange={(e) => onUpdateBook({ author: e.target.value })}
-              placeholder="Author Name"
-              className="w-full text-xs sm:text-sm font-medium text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="e.g. Captain Arthur Vance"
+              aria-label="Author Name"
+              className="w-full text-sm text-slate-800 bg-white border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
             />
           </div>
 
@@ -229,7 +267,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               onClick={onSave}
               disabled={isSaving}
               aria-label="Save manuscript now"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:opacity-50"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-indigo-500 disabled:opacity-50"
             >
               <Save className="w-3.5 h-3.5" />
               <span>Save</span>
@@ -237,7 +275,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
           </div>
         </div>
 
-        {/* Template Selector & Format Button */}
+        {/* Template Selector & Format Button & EPUB Export Button */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-200/60">
           <div className="flex items-center space-x-2">
             <label htmlFor="template-select" className="text-xs font-medium text-slate-600 shrink-0">
@@ -271,6 +309,18 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* EPUB 3 Export Quick Action */}
+            <button
+              type="button"
+              id="editor-export-epub-btn"
+              onClick={() => setIsEpubModalOpen(true)}
+              className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold transition-colors"
+              title="Export Accessible EPUB 3 reflowable eBook"
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>EPUB 3</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setShowFormattingTips(!showFormattingTips)}
@@ -286,7 +336,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               type="button"
               onClick={onFormatManuscript}
               aria-label="Format manuscript"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
             >
               <Wand2 className="w-3.5 h-3.5" />
               <span>Format manuscript</span>
@@ -301,18 +351,18 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             <ul className="list-disc pl-4 space-y-0.5 text-indigo-800">
               <li>Separate body paragraphs with at least one blank line.</li>
               <li>
-                Lines beginning with <code className="bg-indigo-100 px-1 py-0.5 rounded">Chapter &lt;number&gt;</code> (e.g. <em>Chapter 1</em>) start a new chapter.
+                Lines beginning with <code className="bg-indigo-100 px-1 py-0.5 rounded">Chapter &lt;number&gt;</code>, Arabic <code className="bg-indigo-100 px-1 py-0.5 rounded">الفصل 1</code>, or Urdu <code className="bg-indigo-100 px-1 py-0.5 rounded">باب 1</code> start a new chapter.
               </li>
               <li>
-                Short uppercase lines (&lt;80 chars, e.g. <code className="bg-indigo-100 px-1 py-0.5 rounded">PROLOGUE</code> or <code className="bg-indigo-100 px-1 py-0.5 rounded">PART ONE</code>) are also parsed as chapter headings.
+                Short uppercase lines (&lt;80 chars Latin) are also parsed as chapter headings.
               </li>
-              <li>Your original manuscript text is always preserved in full.</li>
+              <li>Use the Blocks tab to manually designate blockquotes, captions, and page breaks.</li>
             </ul>
           </div>
         )}
       </div>
 
-      {/* Editor Tabs: Raw Manuscript vs Structured Blocks vs Image Library vs Typography vs Preflight */}
+      {/* Editor Tabs */}
       <div className="px-4 border-b border-slate-200 bg-slate-50/30 flex items-center justify-between overflow-x-auto">
         <div className="flex space-x-2 shrink-0" role="tablist" aria-label="Editor views">
           <button
@@ -344,6 +394,40 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
             <ListTree className="w-3.5 h-3.5" />
             <span>Blocks ({blocksCount})</span>
           </button>
+
+          <button
+            type="button"
+            role="tab"
+            id="tab-language"
+            aria-selected={activeTab === 'language'}
+            onClick={() => setActiveTab('language')}
+            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+              activeTab === 'language'
+                ? 'border-indigo-600 text-indigo-600 bg-white'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Language ({docLang.toUpperCase()} • {docDir.toUpperCase()})</span>
+          </button>
+
+          {(isExpert || docLang === 'hi' || book.hindiSettings) && (
+            <button
+              type="button"
+              role="tab"
+              id="tab-hindi"
+              aria-selected={activeTab === 'hindi'}
+              onClick={() => setActiveTab('hindi')}
+              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                activeTab === 'hindi'
+                  ? 'border-orange-600 text-orange-600 bg-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <Keyboard className="w-3.5 h-3.5 text-orange-600" />
+              <span>Hindi Publishing</span>
+            </button>
+          )}
 
           <button
             type="button"
@@ -469,22 +553,35 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
       {/* Main Tab Content */}
       <div className="flex-1 p-4 overflow-auto">
         {activeTab === 'raw' && (
-          <div className="h-full flex flex-col">
-            <label htmlFor="raw-manuscript-input" className="sr-only">
-              Manuscript Text Content
-            </label>
+          <div className="h-full flex flex-col space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+              <span>
+                Writing Direction: <strong className="uppercase">{docDir}</strong> • Language: <strong className="uppercase">{docLang}</strong>
+              </span>
+              {docDir === 'rtl' && (
+                <span className="text-indigo-600 font-medium">
+                  RTL typing enabled with Unicode bidirectional text support
+                </span>
+              )}
+            </div>
+
             <textarea
               id="raw-manuscript-input"
+              dir={docDir}
+              lang={docLang}
               value={book.rawManuscript}
               onChange={(e) => onUpdateBook({ rawManuscript: e.target.value })}
-              placeholder="Paste or write your manuscript here...
-
-Chapter 1: The Beginning
-
-It was a crisp autumn morning when the expedition set sail. The sea was still, reflecting the morning sky like polished glass...
-
-Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
+              placeholder={
+                docDir === 'rtl'
+                  ? 'اكتب أو الصق نص مخطوطتك هنا...\n\nالفصل الأول: البداية\n\nكان صباحاً هادئاً حين بدأت الرحلة...'
+                  : "Paste or write your manuscript here...\n\nChapter 1: The Beginning\n\nIt was a crisp autumn morning when the expedition set sail..."
+              }
               aria-label="Manuscript content"
+              style={{
+                direction: docDir,
+                textAlign: docDir === 'rtl' ? 'right' : 'left',
+                unicodeBidi: 'plaintext',
+              }}
               className="flex-1 w-full min-h-[350px] p-4 text-sm font-serif leading-relaxed text-slate-800 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-normal"
             />
           </div>
@@ -500,29 +597,67 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
               blocks.map((block, idx) => {
                 const blockPlacements = placements.filter((p) => p.blockId === block.id);
                 const isDropdownOpen = insertDropdownBlockId === block.id;
+                const blockDir = block.direction || docDir;
 
                 return (
                   <div
                     key={block.id || idx}
+                    dir={blockDir}
                     className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-2.5 transition-shadow hover:shadow-xs"
                   >
                     <div className="flex items-center justify-between text-[11px] text-slate-500 font-semibold border-b border-slate-200/60 pb-1.5">
-                      <div className="flex items-center space-x-1.5">
+                      <div className="flex items-center space-x-2">
                         <span className="font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
                           #{idx + 1}
                         </span>
-                        <span
-                          className={`uppercase tracking-wider ${
-                            block.type === 'chapter-heading' ? 'text-amber-700 font-bold' : 'text-slate-600'
-                          }`}
+
+                        {/* Semantic Block Type Selector */}
+                        <select
+                          value={block.type}
+                          onChange={(e) =>
+                            handleUpdateBlockSemantic(block.id, {
+                              type: e.target.value as BlockType,
+                            })
+                          }
+                          aria-label={`Block #${idx + 1} semantic type`}
+                          className="text-[11px] font-semibold bg-white border border-slate-300 rounded px-1.5 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                         >
-                          {block.type === 'chapter-heading' ? 'Chapter Heading' : 'Paragraph'}
-                        </span>
+                          <option value="paragraph">Paragraph</option>
+                          <option value="chapter-heading">Chapter Heading</option>
+                          <option value="quote">Blockquote</option>
+                          <option value="caption">Caption</option>
+                          <option value="page-break">Page Break</option>
+                        </select>
+
+                        {/* Block Direction Selector */}
+                        <select
+                          value={block.direction || 'auto'}
+                          onChange={(e) =>
+                            handleUpdateBlockSemantic(block.id, {
+                              direction: e.target.value as 'ltr' | 'rtl' | 'auto',
+                            })
+                          }
+                          aria-label={`Block #${idx + 1} writing direction`}
+                          className="text-[10px] bg-white border border-slate-200 rounded px-1 py-0.5 text-slate-600"
+                        >
+                          <option value="auto">Dir: Auto</option>
+                          <option value="ltr">Dir: LTR</option>
+                          <option value="rtl">Dir: RTL</option>
+                        </select>
                       </div>
+
                       <span className="font-mono text-[10px] text-slate-400">ID: {block.id}</span>
                     </div>
 
-                    <p className={`text-slate-800 ${block.type === 'chapter-heading' ? 'font-bold text-sm text-slate-900' : 'leading-relaxed'}`}>
+                    <p
+                      className={`text-slate-800 ${
+                        block.type === 'chapter-heading'
+                          ? 'font-bold text-sm text-slate-900'
+                          : block.type === 'quote'
+                          ? 'italic border-l-2 border-slate-300 pl-2'
+                          : 'leading-relaxed'
+                      }`}
+                    >
                       {block.text}
                     </p>
 
@@ -629,6 +764,23 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
           </div>
         )}
 
+        {activeTab === 'language' && (
+          <LanguageSettingsPanel
+            project={book}
+            onUpdateLanguageSettings={(s) => onUpdateBook({ languageSettings: s })}
+          />
+        )}
+
+        {activeTab === 'hindi' && (
+          <HindiPublishingPanel
+            project={book}
+            template={template}
+            pages={pages}
+            onUpdateHindiSettings={(hs) => onUpdateBook({ hindiSettings: hs })}
+            onGenerateHindiPdf={onTriggerExport}
+          />
+        )}
+
         {activeTab === 'images' && (
           <ImageLibrary
             images={images}
@@ -637,7 +789,7 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
             onAddImage={handleAddImage}
             onUpdateImage={handleUpdateImage}
             onDeleteImage={handleDeleteImage}
-            onInsertPlacement={handleInsertPlacement}
+            onInsertPlacement={handlePlacementCreated}
           />
         )}
 
@@ -701,6 +853,14 @@ Separate paragraphs with blank lines. Use 'Chapter 1' or ALL CAPS for headings."
           onSaved={(newTmpl) => {
             onUpdateBook({ templateId: newTmpl.id });
           }}
+        />
+      )}
+
+      {isEpubModalOpen && (
+        <EpubExportModal
+          project={book}
+          template={template}
+          onClose={() => setIsEpubModalOpen(false)}
         />
       )}
     </div>

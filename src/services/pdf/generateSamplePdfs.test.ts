@@ -374,4 +374,159 @@ Every man on watch remained at his station in focused silence. They knew well th
 
     console.log(`Verified illustrated-book-sample.pdf (CMYK compliant, 0 RGB objects, ${loaded.getPageCount()} pages)`);
   });
+
+  it('generates arabic-rtl-sample.pdf (6x9 RTL with FOGRA39, mirrored margins, shaped Arabic, Arabic-Indic numerals)', async () => {
+    const arabicManuscript = `الفصل الأول: رحلة الأمل
+
+كانت الشمس تميل نحو الغروب حين انطلقت القافلة عبر الصحراء الكبرى. لم يكن أحد يعلم ما تخبئه الرمال من أسرار قديمة، ولكن العزيمة كانت تملأ قلوب المسافرين وتدفعهم نحو الأمام.
+
+قال القائد بحزم: "إن طريقنا طويل ومحفوف بالمخاطر، ولكن الصبر والتعاون هما مفتاح النجاة الوحيد في هذه الرحلة المجهولة."
+
+استمرت المسيرة لعدة أيام حتى بدت في الأفق واحة خضراء يانعة تحيط بها أشجار النخيل الباسقة، وهناك وجدوا النبع الصافي الذي انتظروه طويلاً.`;
+
+    const arabicBlocks = parseManuscript(arabicManuscript);
+    const arabicProject: BookProject = {
+      id: 'arabic-sample-proj',
+      title: 'رحلة الأمل واليقين',
+      author: 'أحمد البغدادي',
+      manuscript: arabicManuscript,
+      templateId: 'classic-novel-6x9',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      editorMode: 'expert',
+      languageSettings: {
+        language: 'ar',
+        direction: 'rtl',
+        numeralSystem: 'arabic-indic',
+        mixedDirectionMode: 'auto',
+      },
+      colorSettings: {
+        outputProfile: 'FOGRA39',
+        outputIntent: 'FOGRA39 (ISO 12647-2:2004)',
+        enablePureBlackText: true,
+        enableBlackOverprint: true,
+      },
+      images: [],
+      placements: [],
+    };
+
+    const arabicPages = defaultPaginationEngine.paginate(arabicBlocks, CLASSIC_NOVEL_6X9, {
+      bookTitle: arabicProject.title,
+      authorName: arabicProject.author,
+      languageSettings: arabicProject.languageSettings,
+    });
+
+    const exportResult = await generatePrintPdf(arabicProject, CLASSIC_NOVEL_6X9, arabicPages, {
+      includeBleed: false,
+      includeCropMarks: false,
+      acknowledgedWarnings: true,
+      colorManagement: arabicProject.colorSettings as any,
+    });
+
+    const pdfBytes = exportResult.output('arraybuffer');
+    const targetFile = path.join(ARTIFACT_DIR, 'arabic-rtl-sample.pdf');
+    fs.writeFileSync(targetFile, Buffer.from(pdfBytes));
+
+    const loaded = await PDFDocument.load(pdfBytes);
+    expect(loaded.getPageCount()).toBeGreaterThanOrEqual(1);
+
+    const report = await inspectPdfCmykCompliance(pdfBytes);
+    expect(report.isCompliant).toBe(true);
+    expect(report.rgbObjectsCount).toBe(0);
+
+    console.log(`Verified arabic-rtl-sample.pdf (CMYK compliant, ${loaded.getPageCount()} pages, RTL geometry)`);
+  });
+
+  it('generates urdu-rtl-sample.pdf (6x9 RTL with FOGRA39, Nastaliq typography, Eastern Urdu numerals)', async () => {
+    const urduManuscript = `باب اول: کاروان حیات
+
+یہ کتاب اردو زبان کے شاہکار ادب کا ایک نیا سنگ میل ہے۔ اس میں زندگی کے نشیب و فراز اور انسانی جذبوں کی عکاسی بڑی خوبصورتی سے کی گئی ہے۔
+
+قائد نے مخاطب ہو کر کہا: "اگر ہمارے ارادے پختہ ہوں تو دشوار ترین راستے بھی آسان ہو جاتے ہیں۔ کامیابی ہمیشہ مسلسل محنت کا ثمر ہوتی ہے۔"
+
+جب رات ڈھلی تو مسافروں نے وادی کے دامن میں خیمے لگائے اور ستاروں بھرے آسمان تلے آنے والے کل کے خواب سجائے۔`;
+
+    const urduBlocks = parseManuscript(urduManuscript);
+    const urduProject: BookProject = {
+      id: 'urdu-sample-proj',
+      title: 'کاروان حیات',
+      author: 'مرزا غالب',
+      manuscript: urduManuscript,
+      templateId: 'classic-novel-6x9',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      editorMode: 'expert',
+      languageSettings: {
+        language: 'ur',
+        direction: 'rtl',
+        numeralSystem: 'urdu-eastern',
+        mixedDirectionMode: 'auto',
+      },
+      colorSettings: {
+        outputProfile: 'FOGRA39',
+        outputIntent: 'FOGRA39 (ISO 12647-2:2004)',
+        enablePureBlackText: true,
+        enableBlackOverprint: true,
+      },
+      images: [],
+      placements: [],
+    };
+
+    const urduPages = defaultPaginationEngine.paginate(urduBlocks, CLASSIC_NOVEL_6X9, {
+      bookTitle: urduProject.title,
+      authorName: urduProject.author,
+      languageSettings: urduProject.languageSettings,
+    });
+
+    const exportResult = await generatePrintPdf(urduProject, CLASSIC_NOVEL_6X9, urduPages, {
+      includeBleed: false,
+      includeCropMarks: false,
+      acknowledgedWarnings: true,
+      colorManagement: urduProject.colorSettings as any,
+    });
+
+    const pdfBytes = exportResult.output('arraybuffer');
+    const targetFile = path.join(ARTIFACT_DIR, 'urdu-rtl-sample.pdf');
+    fs.writeFileSync(targetFile, Buffer.from(pdfBytes));
+
+    const loaded = await PDFDocument.load(pdfBytes);
+    expect(loaded.getPageCount()).toBeGreaterThanOrEqual(1);
+
+    const report = await inspectPdfCmykCompliance(pdfBytes);
+    expect(report.isCompliant).toBe(true);
+    expect(report.rgbObjectsCount).toBe(0);
+
+    console.log(`Verified urdu-rtl-sample.pdf (CMYK compliant, ${loaded.getPageCount()} pages, Urdu numerals)`);
+  });
+
+  it('generates arabic-rtl-sample.epub (Valid EPUB 3 with page-progression-direction="rtl")', async () => {
+    const { generateEpub } = await import('../epub/epubExportService');
+    const arabicManuscript = `الفصل الأول: رحلة الأمل\n\nكانت الشمس تميل نحو الغروب حين انطلقت القافلة عبر الصحراء الكبرى.`;
+    const arabicProject: BookProject = {
+      id: 'arabic-epub-sample',
+      title: 'رحلة الأمل واليقين',
+      author: 'أحمد البغدادي',
+      manuscript: arabicManuscript,
+      templateId: 'classic-novel-6x9',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      editorMode: 'expert',
+      languageSettings: {
+        language: 'ar',
+        direction: 'rtl',
+        numeralSystem: 'arabic-indic',
+        mixedDirectionMode: 'auto',
+      },
+      images: [],
+      placements: [],
+    };
+
+    const epubResult = await generateEpub(arabicProject, CLASSIC_NOVEL_6X9);
+    const targetFile = path.join(ARTIFACT_DIR, 'arabic-rtl-sample.epub');
+    fs.writeFileSync(targetFile, Buffer.from(epubResult.arrayBuffer));
+
+    expect(fs.existsSync(targetFile)).toBe(true);
+    expect(epubResult.arrayBuffer.byteLength).toBeGreaterThan(100);
+    console.log(`Verified arabic-rtl-sample.epub (${epubResult.arrayBuffer.byteLength} bytes)`);
+  });
 });

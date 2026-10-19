@@ -1,4 +1,4 @@
-export type BlockType = 'chapter-heading' | 'paragraph' | 'image';
+export type BlockType = 'chapter-heading' | 'paragraph' | 'quote' | 'caption' | 'page-break' | 'image';
 
 export type PlacementMode = 'inline' | 'full-width' | 'float-right';
 
@@ -40,6 +40,9 @@ export interface ManuscriptBlock {
   type: BlockType;
   text: string;
   chapterNumber?: number;
+  direction?: 'ltr' | 'rtl' | 'auto';
+  language?: string; // e.g. 'en', 'ar', 'ur', 'hi'
+  isManualOverride?: boolean;
 }
 
 export interface PageBlock {
@@ -47,6 +50,8 @@ export interface PageBlock {
   type: BlockType;
   text?: string;
   isContinuation?: boolean;
+  direction?: 'ltr' | 'rtl' | 'auto';
+  language?: string;
   placement?: ImagePlacement;
   image?: BookImage;
 }
@@ -213,12 +218,75 @@ export interface PrintColorSettings {
   maxTacPercent?: number; // configured total ink limit
 }
 
+export type DocumentLanguage = 'en' | 'ar' | 'ur' | 'hi' | 'mixed';
+export type WritingDirection = 'ltr' | 'rtl';
+export type NumeralSystem = 'western' | 'arabic-indic' | 'urdu-eastern';
+
+export interface LanguageSettings {
+  language: DocumentLanguage;
+  direction: WritingDirection;
+  numeralSystem?: NumeralSystem;
+  mixedDirectionMode?: 'auto' | 'strict';
+}
+
+export type HindiFontLayoutOption = 'krutidev' | 'chanakya' | 'unicode-inscript' | 'unicode-phonetic';
+export type HindiEncodingType = 'unicode' | 'legacy';
+export type HindiInputMode = 'direct' | 'phonetic' | 'keyboard-mapped';
+
+export interface HindiDocumentSettings {
+  selectedFontId?: string;
+  layoutOption: HindiFontLayoutOption;
+  encodingType: HindiEncodingType;
+  inputMode: HindiInputMode;
+  enableDerivedUnicode: boolean; // maintains derived Unicode alongside legacy text
+}
+
+export interface ManagedFont {
+  id: string;
+  displayName: string;
+  familyName: string;
+  encodingType: 'unicode' | 'legacy';
+  supportedScript: 'devanagari' | 'arabic' | 'urdu' | 'latin' | 'other';
+  associatedKeyboardLayout?: 'remington-kruti' | 'chanakya' | 'inscript' | 'phonetic' | 'none';
+  format: CustomFontFormat;
+  fileName: string;
+  fileSizeBytes: number;
+  dataUrl: string; // base64 or bundled
+  createdAt: string;
+  canEmbedInPdf: boolean;
+  license?: string;
+  isSystemPreset?: boolean;
+}
+
+export interface EpubExportOptions {
+  title: string;
+  author: string;
+  language: string; // 'en' | 'ar' | 'ur' | 'hi'
+  direction: 'ltr' | 'rtl';
+  coverImageId?: string;
+  includeFonts?: boolean;
+  publisher?: string;
+  isbn?: string;
+  description?: string;
+}
+
 export type PreflightSeverity = 'error' | 'warning';
 
 export interface PreflightIssue {
   id: string;
   severity: PreflightSeverity;
-  category: 'manuscript' | 'image' | 'geometry' | 'typography' | 'storage' | 'design' | 'font' | 'color';
+  category:
+    | 'manuscript'
+    | 'image'
+    | 'geometry'
+    | 'typography'
+    | 'storage'
+    | 'design'
+    | 'font'
+    | 'color'
+    | 'language'
+    | 'epub'
+    | 'hindi';
   title: string;
   description: string;
   pageNumber?: number;
@@ -232,7 +300,10 @@ export interface PreflightIssue {
     | 'open-blocks'
     | 'open-design'
     | 'open-fonts'
-    | 'open-color';
+    | 'open-color'
+    | 'open-language'
+    | 'open-hindi'
+    | 'open-epub';
   actionLabel?: string;
 }
 
@@ -260,9 +331,13 @@ export interface BookProject {
   rawManuscript: string;
   templateId: string;
   editorMode?: EditorMode; // 'beginner' (default) | 'expert'
+  languageSettings?: LanguageSettings; // document language and RTL settings
+  hindiSettings?: HindiDocumentSettings; // dedicated Hindi module settings
   design?: Partial<PageDesignSettings>; // visual design settings
   customFonts?: CustomFont[]; // uploaded custom fonts
+  managedFonts?: ManagedFont[]; // managed fonts catalog
   colorSettings?: Partial<PrintColorSettings>; // CMYK prepress and color settings
+  epubOptions?: Partial<EpubExportOptions>; // EPUB 3 export options
   formattedBlocks: ManuscriptBlock[];
   images: BookImage[];
   placements: ImagePlacement[];

@@ -21,6 +21,7 @@ import { ManuscriptEditor, EditorTabType } from '@/components/editor/ManuscriptE
 import { BookSpreadPreview } from '@/components/preview/BookSpreadPreview';
 import { ImageInspector } from '@/components/images/ImageInspector';
 import { PdfExportModal } from '@/components/export/PdfExportModal';
+import { EpubExportModal } from '@/components/export/EpubExportModal';
 import {
   ArrowLeft,
   Loader2,
@@ -32,6 +33,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Sliders,
+  BookOpen,
 } from 'lucide-react';
 
 export default function BookEditorPage() {
@@ -57,6 +59,7 @@ export default function BookEditorPage() {
 
   // Export Modal state & Warning Acknowledgement
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
+  const [isEpubModalOpen, setIsEpubModalOpen] = useState<boolean>(false);
   const [isAcknowledgedWarnings, setIsAcknowledgedWarnings] = useState<boolean>(false);
 
   // Ref for debounced autosave timer
@@ -311,6 +314,12 @@ export default function BookEditorPage() {
       setActiveEditorTab('fonts');
     } else if (issue.actionType === 'open-color') {
       setActiveEditorTab('color');
+    } else if (issue.actionType === 'open-language') {
+      setActiveEditorTab('language');
+    } else if (issue.actionType === 'open-hindi') {
+      setActiveEditorTab('hindi');
+    } else if (issue.actionType === 'open-epub') {
+      setIsEpubModalOpen(true);
     } else if (issue.actionType === 'select-image' && issue.placementId) {
       setSelectedPlacementId(issue.placementId);
     }
@@ -453,6 +462,18 @@ export default function BookEditorPage() {
             )}
           </button>
 
+          {/* Export EPUB 3 Button */}
+          <button
+            type="button"
+            id="open-epub-export-btn"
+            onClick={() => setIsEpubModalOpen(true)}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-emerald-500"
+            title="Export Accessible EPUB 3 reflowable eBook"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Export EPUB 3</span>
+          </button>
+
           {/* View Layout Mode Buttons (Split / Editor Only / Preview Only) */}
           <div className="hidden sm:flex items-center space-x-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs" role="group" aria-label="Layout view mode">
             <button
@@ -568,6 +589,7 @@ export default function BookEditorPage() {
                 design={book.design || currentTemplate.design}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={setSelectedPlacementId}
+                languageSettings={book.languageSettings}
               />
 
               {/* Floating Inspector in Preview-Only mode */}
@@ -594,6 +616,15 @@ export default function BookEditorPage() {
           template={currentTemplate}
           pages={pages}
           onClose={() => setIsExportModalOpen(false)}
+        />
+      )}
+
+      {/* Accessible EPUB 3 Export Modal */}
+      {isEpubModalOpen && (
+        <EpubExportModal
+          project={book}
+          template={currentTemplate}
+          onClose={() => setIsEpubModalOpen(false)}
         />
       )}
     </div>

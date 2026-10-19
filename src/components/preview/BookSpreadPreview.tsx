@@ -25,6 +25,7 @@ interface BookSpreadPreviewProps {
   design?: Partial<PageDesignSettings>;
   selectedPlacementId?: string | null;
   onSelectPlacement?: (placementId: string) => void;
+  languageSettings?: import('@/types/book').LanguageSettings;
 }
 
 export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
@@ -36,6 +37,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
   design,
   selectedPlacementId = null,
   onSelectPlacement,
+  languageSettings,
 }) => {
   const [zoomScale, setZoomScale] = useState<number>(0.75); // Good desktop default scale for 6x9 in
   const [viewMode, setViewMode] = useState<'spread' | 'single'>('spread');
@@ -318,34 +320,51 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
         >
           {viewMode === 'spread' ? (
             /* Side-by-side spread */
-            <div className="flex items-stretch justify-center relative shadow-2xl rounded-sm">
-              {/* Left (Verso) Page */}
-              <BookPage
-                page={activeSpread?.left}
-                template={template}
-                authorName={authorName}
-                typographyOverrides={typographyOverrides}
-                design={design}
-                isPlaceholder={!activeSpread?.left}
-                selectedPlacementId={selectedPlacementId}
-                onSelectPlacement={onSelectPlacement}
-              />
+            (() => {
+              const isRtl = languageSettings?.direction === 'rtl';
+              // In RTL, spread reading flow is right-to-left.
+              // For Spread 0: Left is blank/placeholder, Right is Page 1.
+              // For subsequent spreads: Right page is Page 2 (read first), Left page is Page 3 (read second).
+              const displayLeft = isRtl
+                ? (currentSpreadIndex === 0 ? undefined : activeSpread?.right)
+                : activeSpread?.left;
+              const displayRight = isRtl
+                ? (currentSpreadIndex === 0 ? activeSpread?.right : activeSpread?.left)
+                : activeSpread?.right;
 
-              {/* Book Spine Center Divider */}
-              <div className="w-[1px] bg-slate-300 relative z-20" />
+              return (
+                <div className="flex items-stretch justify-center relative shadow-2xl rounded-sm">
+                  {/* Left Page */}
+                  <BookPage
+                    page={displayLeft}
+                    template={template}
+                    authorName={authorName}
+                    typographyOverrides={typographyOverrides}
+                    design={design}
+                    isPlaceholder={!displayLeft}
+                    selectedPlacementId={selectedPlacementId}
+                    onSelectPlacement={onSelectPlacement}
+                    languageSettings={languageSettings}
+                  />
 
-              {/* Right (Recto) Page */}
-              <BookPage
-                page={activeSpread?.right}
-                template={template}
-                authorName={authorName}
-                typographyOverrides={typographyOverrides}
-                design={design}
-                isPlaceholder={!activeSpread?.right}
-                selectedPlacementId={selectedPlacementId}
-                onSelectPlacement={onSelectPlacement}
-              />
-            </div>
+                  {/* Book Spine Center Divider */}
+                  <div className="w-[1px] bg-slate-300 relative z-20" />
+
+                  {/* Right Page */}
+                  <BookPage
+                    page={displayRight}
+                    template={template}
+                    authorName={authorName}
+                    typographyOverrides={typographyOverrides}
+                    design={design}
+                    isPlaceholder={!displayRight}
+                    selectedPlacementId={selectedPlacementId}
+                    onSelectPlacement={onSelectPlacement}
+                    languageSettings={languageSettings}
+                  />
+                </div>
+              );
+            })()
           ) : (
             /* Single Page */
             <div className="flex items-center justify-center shadow-2xl rounded-sm">
@@ -357,6 +376,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
                 design={design}
                 selectedPlacementId={selectedPlacementId}
                 onSelectPlacement={onSelectPlacement}
+                languageSettings={languageSettings}
               />
             </div>
           )}

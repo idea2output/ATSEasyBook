@@ -9,6 +9,7 @@ import {
 } from '@/types/book';
 import { ALLOWED_IMAGE_MIME_TYPES } from '@/services/images/imageService';
 import { getEffectiveTypography } from '@/services/templates/templateRegistry';
+import { ARABIC_URDU_REGEX, DEVANAGARI_REGEX } from '@/services/rtl/bidiService';
 
 export function calculateEffectiveImageDpi(
   placement: ImagePlacement,
@@ -490,6 +491,155 @@ export function runPrintPreflight(
           actionLabel: 'Inspect TAC',
         });
       }
+    }
+  }
+
+  // -------------------------------------------------------------
+  // PHASE 5: LANGUAGE, RTL, HINDI & EPUB PREFLIGHT CHECKS
+  // -------------------------------------------------------------
+
+  // Warning 15: Missing Language / Direction Configuration
+  const hasComplexScript =
+    ARABIC_URDU_REGEX.test(project.rawManuscript || '') ||
+    DEVANAGARI_REGEX.test(project.rawManuscript || '');
+
+  if (!project.languageSettings && hasComplexScript) {
+    issues.push({
+      id: 'warn-missing-language-config',
+      severity: 'warning',
+      category: 'language',
+      title: 'Document language and direction not configured for complex script',
+      description: 'Manuscript contains Arabic, Urdu, or Devanagari text, but document language and writing direction are not explicitly configured.',
+      actionType: 'open-language',
+      actionLabel: 'Set Language',
+    });
+  } else if (project.languageSettings && (!project.languageSettings.language || !project.languageSettings.direction)) {
+    issues.push({
+      id: 'warn-missing-language-config',
+      severity: 'warning',
+      category: 'language',
+      title: 'Incomplete language or direction configuration',
+      description: 'Document language or writing direction is partially configured. Please verify Language Settings.',
+      actionType: 'open-language',
+      actionLabel: 'Set Language',
+    });
+  } else {
+    passedCount++;
+  }
+
+  // Warning 16: RTL / Complex Script Font Glyph Coverage
+  const docLang = project.languageSettings?.language || 'en';
+  const fontFam = effectiveTypo.bodyFontFamily || 'serif';
+  const hasArabicOrUrdu = /[\u0600-\u06FF\u0750-\u077F\uFB50-\uFDFF\uFE70-\uFEFF]/.test(project.rawManuscript || '');
+  const hasDevanagari = /[\u0900-\u097F]/.test(project.rawManuscript || '');
+
+  if (hasArabicOrUrdu || docLang === 'ar' || docLang === 'ur') {
+    const isUrdu = docLang === 'ur' || /[\u0679\u067E\u0686\u0688\u0691\u0698\u06AF\u06BA\u06BE\u06CC\u06D2]/.test(project.rawManuscript || '');
+    const isRtlFont =
+      fontFam.toLowerCase().includes('amiri') ||
+      fontFam.toLowerCase().includes('nastaliq') ||
+      fontFam.toLowerCase().includes('arabic') ||
+      fontFam.toLowerCase().includes('scheherazade');
+
+    if (!isRtlFont) {
+      issues.push({
+        id: 'warn-rtl-font-missing',
+        severity: 'warning',
+        category: 'font',
+        title: `Selected font "${fontFam}" may lack full ${isUrdu ? 'Urdu Nastaliq' : 'Arabic'} glyph coverage`,
+        description: `Arabic and Urdu scripts require specialized OpenType fonts for cursive joining and ligatures. Recommend selecting "Amiri" (Arabic) or "Noto Nastaliq Urdu" (Urdu).`,
+        actionType: 'open-fonts',
+        actionLabel: 'Select Font',
+      });
+    } else {
+      passedCount++;
+    }
+
+    // Warning 17: Unsafe Line Height for Arabic / Urdu
+    const currentLineHeight = effectiveTypo.bodyLineHeight;
+    const minSafeLineHeight = isUrdu ? 1.8 : 1.5;
+    if (currentLineHeight < minSafeLineHeight) {
+      issues.push({
+        id: 'warn-unsafe-rtl-line-height',
+        severity: 'warning',
+        category: 'typography',
+        title: `Line height (${currentLineHeight.toFixed(2)}) is unsafe for ${isUrdu ? 'Urdu' : 'Arabic'} typography`,
+        description: `${isUrdu ? 'Urdu Nastaliq' : 'Arabic'} ascenders, descenders, and diacritics risk clipping with line height below ${minSafeLineHeight}. Recommend at least ${isUrdu ? '1.90' : '1.65'}.`,
+        actionType: 'open-typography',
+        actionLabel: 'Adjust Spacing',
+      });
+    } else {
+      passedCount++;
+    }
+  }
+
+  // Warning 18: Mixed-Direction Text Requiring Editorial Review
+  const hasLatinLetters = /[A-Za-z]/.test(project.rawManuscript || '');
+  if (hasArabicOrUrdu && hasLatinLetters) {
+    issues.push({
+      id: 'warn-mixed-direction-text',
+      severity: 'warning',
+      category: 'language',
+      title: 'Manuscript contains mixed-direction text (RTL and LTR)',
+      description: 'Your manuscript combines Arabic/Urdu and Latin text. Review block-level direction overrides in the Structured Blocks tab to ensure correct reading order for embedded English phrases.',
+      actionType: 'open-blocks',
+      actionLabel: 'Inspect Blocks',
+    });
+  }
+
+  // Warning 19: Missing Image Alt Text for EPUB Accessibility
+  let missingAltCount = 0;
+  for (const img of images) {
+    if (!img.altText || !img.altText.trim()) {
+      missingAltCount++;
+      issues.push({
+        id: `warn-epub-missing-alt-${img.id}`,
+        severity: 'warning',
+        category: 'epub',
+        title: `Image "${img.filename}" lacks alternative text for EPUB`,
+        description: `Accessible EPUB 3 export requires descriptive alt text for screen readers and accessibility verification. Add alt text in the Image Library before exporting EPUB.`,
+        imageId: img.id,
+        actionType: 'open-library',
+        actionLabel: 'Add Alt Text',
+      });
+    }
+  }
+  if (missingAltCount === 0) {
+    passedCount++;
+  }
+
+  // Warning 20: Dedicated Hindi Module Checks
+  if (project.hindiSettings || hasDevanagari || docLang === 'hi') {
+    const isHindiFont =
+      fontFam.toLowerCase().includes('devanagari') ||
+      fontFam.toLowerCase().includes('mangal') ||
+      fontFam.toLowerCase().includes('kruti') ||
+      fontFam.toLowerCase().includes('chanakya');
+
+    if (!isHindiFont && hasDevanagari) {
+      issues.push({
+        id: 'warn-hindi-font-missing',
+        severity: 'warning',
+        category: 'hindi',
+        title: `Selected font "${fontFam}" lacks Devanagari script support`,
+        description: 'Manuscript contains Devanagari Hindi text. Ensure a Unicode Devanagari font (such as Noto Sans Devanagari) or a configured legacy font is selected.',
+        actionType: 'open-hindi',
+        actionLabel: 'Hindi Settings',
+      });
+    } else {
+      passedCount++;
+    }
+
+    if (project.hindiSettings?.encodingType === 'legacy' && !project.hindiSettings.enableDerivedUnicode) {
+      issues.push({
+        id: 'warn-hindi-legacy-derived-unicode',
+        severity: 'warning',
+        category: 'hindi',
+        title: 'Derived Unicode search representation disabled for legacy Hindi font',
+        description: 'Legacy fonts like Kruti Dev store non-Unicode text. Enabling derived Unicode provides accessible search indexing and EPUB export.',
+        actionType: 'open-hindi',
+        actionLabel: 'Configure Hindi',
+      });
     }
   }
 

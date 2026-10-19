@@ -276,12 +276,24 @@ export class StandardPaginationEngine implements IPaginationEngine {
           blockId: block.id,
           type: 'chapter-heading',
           text: block.text,
+          direction: block.direction,
+          language: block.language,
         });
         col1LinesUsed += headingTotalBudget;
 
         processPlacementsForBlock(block.id);
         continue;
       }
+
+      if (block.type === 'page-break') {
+        if (col1Blocks.length > 0 || col2Blocks.length > 0) {
+          pushPage(false);
+        }
+        continue;
+      }
+
+      const isQuote = block.type === 'quote';
+      const isCaption = block.type === 'caption';
 
       // Paragraph block
       const words = block.text.split(/\s+/).filter(Boolean);
@@ -315,9 +327,11 @@ export class StandardPaginationEngine implements IPaginationEngine {
           // Fits entirely in current column/page
           getActiveColBlocks().push({
             blockId: block.id,
-            type: 'paragraph',
+            type: block.type,
             text: paragraphText,
             isContinuation: remainingWords.length < totalWords,
+            direction: block.direction,
+            language: block.language,
           });
           addLinesToActiveCol(requiredLines);
 
@@ -359,9 +373,11 @@ export class StandardPaginationEngine implements IPaginationEngine {
 
             getActiveColBlocks().push({
               blockId: block.id,
-              type: 'paragraph',
+              type: block.type,
               text: firstPart,
               isContinuation: remainingWords.length + splitIndex < totalWords,
+              direction: block.direction,
+              language: block.language,
             });
 
             advanceColumnOrPage();

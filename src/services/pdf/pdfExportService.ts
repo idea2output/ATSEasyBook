@@ -14,6 +14,8 @@ import {
   inspectPdfCmykCompliance,
   CmykPreflightReport,
 } from '@/services/cmyk/cmykPreflightInspector';
+import { prepareRtlTextForPdf } from '@/services/rtl/arabicShaper';
+import { isArabicOrUrdu, formatNumerals } from '@/services/rtl/bidiService';
 
 export interface ExportProgressCallback {
   (progressPercent: number, statusText: string): void;
@@ -329,12 +331,22 @@ export async function generatePrintPdf(
       continue;
     }
 
-    // Margins
+    // Margins (with RTL Mirroring)
+    const isRtl = project.languageSettings?.direction === 'rtl';
+    const numSystem = project.languageSettings?.numeralSystem || 'western';
     const isLeft = page.isLeft;
     const insideMargin = template.margins.insideInches + template.margins.gutterInches;
     const outsideMargin = template.margins.outsideInches;
-    const marginLeft = isLeft ? outsideMargin : insideMargin;
-    const marginRight = isLeft ? insideMargin : outsideMargin;
+
+    // In LTR books: Verso (left) outside is left, inside is right. Recto (right) inside is left, outside is right.
+    // In RTL books (spine on right): Verso inside is left, outside is right. Recto inside is right, outside is left.
+    let marginLeft = isLeft ? outsideMargin : insideMargin;
+    let marginRight = isLeft ? insideMargin : outsideMargin;
+    if (isRtl) {
+      marginLeft = isLeft ? insideMargin : outsideMargin;
+      marginRight = isLeft ? outsideMargin : insideMargin;
+    }
+
     const marginTop = template.margins.topInches;
     const marginBottom = template.margins.bottomInches;
 
@@ -360,7 +372,13 @@ export async function generatePrintPdf(
       doc.setFont('times', 'italic');
       doc.setFontSize(8.5);
       doc.setTextColor(hfCmyk.c, hfCmyk.m, hfCmyk.y, hfCmyk.k);
-      doc.text(page.headerText, originX + trimW / 2, headerY, { align: 'center' });
+
+      const headerTextToDraw =
+        isRtl || isArabicOrUrdu(page.headerText)
+          ? prepareRtlTextForPdf(page.headerText, numSystem)
+          : page.headerText;
+
+      doc.text(headerTextToDraw, originX + trimW / 2, headerY, { align: 'center' });
     }
 
     // -------------------------------------------------------------
@@ -372,16 +390,32 @@ export async function generatePrintPdf(
       doc.setFontSize(9);
       doc.setTextColor(hfCmyk.c, hfCmyk.m, hfCmyk.y, hfCmyk.k);
 
+      const formattedPageNum = formatNumerals(String(page.pageNumber), numSystem);
       const pos = effectiveTypo.pageNumberPosition;
+
       if (pos === 'bottom-center') {
-        doc.text(String(page.pageNumber), originX + trimW / 2, footerY, { align: 'center' });
+        doc.text(formattedPageNum, originX + trimW / 2, footerY, { align: 'center' });
       } else if (pos === 'bottom-outside') {
-        const numX = isLeft ? contentLeft : contentLeft + contentWidth;
-        doc.text(String(page.pageNumber), numX, footerY, { align: isLeft ? 'left' : 'right' });
+        const numX = isRtl
+          ? isLeft
+            ? contentLeft + contentWidth
+            : contentLeft
+          : isLeft
+          ? contentLeft
+          : contentLeft + contentWidth;
+        const align = isRtl ? (isLeft ? 'right' : 'left') : isLeft ? 'left' : 'right';
+        doc.text(formattedPageNum, numX, footerY, { align });
       } else if (pos === 'top-outside') {
         const topNumY = originY + marginTop * 0.65;
-        const numX = isLeft ? contentLeft : contentLeft + contentWidth;
-        doc.text(String(page.pageNumber), numX, topNumY, { align: isLeft ? 'left' : 'right' });
+        const numX = isRtl
+          ? isLeft
+            ? contentLeft + contentWidth
+            : contentLeft
+          : isLeft
+          ? contentLeft
+          : contentLeft + contentWidth;
+        const align = isRtl ? (isLeft ? 'right' : 'left') : isLeft ? 'left' : 'right';
+        doc.text(formattedPageNum, numX, topNumY, { align });
       }
     }
 
@@ -399,14 +433,20 @@ export async function generatePrintPdf(
 
     for (let colIdx = 0; colIdx < columnsToRender.length; colIdx++) {
       const colBlocks = columnsToRender[colIdx];
+      // In RTL two-column mode, column 0 is the right column, column 1 is the left column
       const colLeft = isTwoCol
-        ? contentLeft + colIdx * (singleColW + colGap)
+        ? isRtl
+          ? colIdx === 0
+            ? contentLeft + singleColW + colGap
+            : contentLeft
+          : contentLeft + colIdx * (singleColW + colGap)
         : contentLeft;
 
       let currentCursorY = contentTop;
 
       for (let bIdx = 0; bIdx < colBlocks.length; bIdx++) {
         const block = colBlocks[bIdx];
+        const blockIsRtl = block.direction === 'rtl' || (block.direction !== 'ltr' && (isRtl || isArabicOrUrdu(block.text || '')));
 
         if (block.type === 'chapter-heading') {
           const headingFont = mapFontFamilyToPdfFont(effectiveTypo.headingFontFamily, project);
@@ -415,36 +455,54 @@ export async function generatePrintPdf(
           doc.setTextColor(headCmyk.c, headCmyk.m, headCmyk.y, headCmyk.k);
 
           currentCursorY += 0.25;
-          const headingX =
-            template.typography.headingStyle.alignment === 'center'
-              ? colLeft + singleColW / 2
-              : colLeft;
-          const align =
-            template.typography.headingStyle.alignment === 'center' ? 'center' : 'left';
+          const isCenter = template.typography.headingStyle.alignment === 'center';
+          const headingX = isCenter
+            ? colLeft + singleColW / 2
+            : blockIsRtl
+            ? colLeft + singleColW
+            : colLeft;
+          const align = isCenter ? 'center' : blockIsRtl ? 'right' : 'left';
 
-          doc.text(block.text || '', headingX, currentCursorY, { align });
+          const headingTextToDraw = blockIsRtl
+            ? prepareRtlTextForPdf(block.text || '', numSystem)
+            : block.text || '';
+
+          doc.text(headingTextToDraw, headingX, currentCursorY, { align });
           currentCursorY += 0.35;
           continue;
         }
 
-        if (block.type === 'paragraph' && block.text) {
+        if ((block.type === 'paragraph' || block.type === 'quote' || block.type === 'caption') && block.text) {
           const bodyFont = mapFontFamilyToPdfFont(effectiveTypo.bodyFontFamily, project);
-          doc.setFont(bodyFont.fontName, 'normal');
+          const isQuote = block.type === 'quote';
+          doc.setFont(bodyFont.fontName, isQuote ? 'italic' : 'normal');
           doc.setFontSize(effectiveTypo.bodyFontSizePt);
           // Pure 100K Black for body text
           doc.setTextColor(textCmyk.c, textCmyk.m, textCmyk.y, textCmyk.k);
 
           const isAfterHeading = bIdx > 0 && colBlocks[bIdx - 1].type === 'chapter-heading';
           const isContinuation = block.isContinuation;
-          const shouldIndent = !isAfterHeading && !isContinuation && effectiveTypo.paragraphIndentInches > 0;
+          const shouldIndent = !isAfterHeading && !isContinuation && !isQuote && effectiveTypo.paragraphIndentInches > 0;
 
           const splitLines = doc.splitTextToSize(block.text, singleColW);
           const lineStep = (effectiveTypo.bodyFontSizePt / 72) * effectiveTypo.bodyLineHeight;
 
           for (let lIdx = 0; lIdx < splitLines.length; lIdx++) {
             const line = splitLines[lIdx];
-            const lineX = lIdx === 0 && shouldIndent ? colLeft + effectiveTypo.paragraphIndentInches : colLeft;
-            doc.text(line, lineX, currentCursorY);
+            const lineToDraw = blockIsRtl ? prepareRtlTextForPdf(line, numSystem) : line;
+
+            let lineX = colLeft;
+            let align: 'left' | 'right' = 'left';
+
+            if (blockIsRtl) {
+              align = 'right';
+              lineX = colLeft + singleColW - (lIdx === 0 && shouldIndent ? effectiveTypo.paragraphIndentInches : 0);
+            } else {
+              align = 'left';
+              lineX = lIdx === 0 && shouldIndent ? colLeft + effectiveTypo.paragraphIndentInches : colLeft;
+            }
+
+            doc.text(lineToDraw, lineX, currentCursorY, { align });
             currentCursorY += lineStep;
           }
 
@@ -557,4 +615,27 @@ export async function generatePrintPdf(
     getBytes: () => cmykPdfBytes,
     getPreflightReport: () => preflightReport,
   };
+}
+
+/**
+ * Dedicated action to generate a print-ready Hindi PDF,
+ * embedding selected Devanagari/legacy fonts and preserving Phase 4.1 CMYK rules.
+ */
+export async function generateHindiPdf(
+  project: BookProject,
+  template: BookTemplate,
+  pages: PagePreviewData[],
+  options: PdfExportOptions,
+  onProgress?: ExportProgressCallback
+): Promise<PrintPdfExportResult> {
+  const hindiProject: BookProject = {
+    ...project,
+    languageSettings: {
+      language: 'hi',
+      direction: 'ltr',
+      numeralSystem: 'western',
+      ...project.languageSettings,
+    },
+  };
+  return generatePrintPdf(hindiProject, template, pages, options, onProgress);
 }

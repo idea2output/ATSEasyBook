@@ -1,12 +1,15 @@
+import React from 'react';
 import {
   PagePreviewData,
   BookTemplate,
   PageBlock,
   PageDesignSettings,
   TypographySettings,
+  LanguageSettings,
 } from '@/types/book';
 import { getEffectiveAspectRatio } from '@/services/images/imageService';
 import { getEffectiveTypography } from '@/services/templates/templateRegistry';
+import { formatNumerals } from '@/services/rtl/bidiService';
 
 interface BookPageProps {
   page?: PagePreviewData;
@@ -17,6 +20,7 @@ interface BookPageProps {
   isPlaceholder?: boolean;
   selectedPlacementId?: string | null;
   onSelectPlacement?: (placementId: string) => void;
+  languageSettings?: LanguageSettings;
 }
 
 export const BookPage: React.FC<BookPageProps> = ({
@@ -28,8 +32,11 @@ export const BookPage: React.FC<BookPageProps> = ({
   isPlaceholder = false,
   selectedPlacementId = null,
   onSelectPlacement,
+  languageSettings,
 }) => {
   const effectiveTypo = getEffectiveTypography(template, typographyOverrides, authorName);
+  const isRtl = languageSettings?.direction === 'rtl';
+  const numSystem = languageSettings?.numeralSystem || 'western';
 
   if (isPlaceholder || !page) {
     return (
@@ -50,17 +57,27 @@ export const BookPage: React.FC<BookPageProps> = ({
   const isVerso = page.isLeft; // Even = Verso (Left), Odd = Recto (Right)
   const isOpeningChapterPage = page.blocks.some((b) => b.type === 'chapter-heading');
 
-  // Asymmetric book margins: binding inside edge has greater gutter
-  const paddingLeft = isVerso ? template.margins.outside : template.margins.inside;
-  const paddingRight = isVerso ? template.margins.inside : template.margins.outside;
+  // Asymmetric book margins: binding inside edge has greater gutter.
+  // In RTL books (spine on right):
+  // Verso (left page): inside edge is on the left, outside edge is on the right!
+  // Recto (right page): inside edge is on the right, outside edge is on the left!
+  let paddingLeft = isVerso ? template.margins.outside : template.margins.inside;
+  let paddingRight = isVerso ? template.margins.inside : template.margins.outside;
+  if (isRtl) {
+    paddingLeft = isVerso ? template.margins.inside : template.margins.outside;
+    paddingRight = isVerso ? template.margins.outside : template.margins.inside;
+  }
+
   const paddingTop = template.margins.top;
   const paddingBottom = template.margins.bottom;
 
   // Render a block helper
   const renderBlock = (block: PageBlock, idx: number, colBlocks: PageBlock[]) => {
+    const blockDir = block.direction || (isRtl ? 'rtl' : 'ltr');
+
     if (block.type === 'chapter-heading') {
       return (
-        <div key={`${block.blockId}-${idx}`} className="pt-6 pb-4 text-center">
+        <div key={`${block.blockId}-${idx}`} dir={blockDir} className="pt-6 pb-4 text-center">
           <h2
             className="font-bold tracking-tight leading-snug"
             style={{
@@ -77,6 +94,22 @@ export const BookPage: React.FC<BookPageProps> = ({
       );
     }
 
+    if (block.type === 'quote') {
+      return (
+        <blockquote
+          key={`${block.blockId}-${idx}`}
+          dir={blockDir}
+          className={`my-3 px-4 italic border-${isRtl ? 'r-4' : 'l-4'} border-slate-300 text-slate-700 leading-relaxed`}
+          style={{
+            fontFamily: effectiveTypo.bodyFontFamily,
+            fontSize: `${effectiveTypo.bodyFontSizePt}pt`,
+          }}
+        >
+          {block.text}
+        </blockquote>
+      );
+    }
+
     if (block.type === 'image' && block.placement && block.image) {
       const placement = block.placement;
       const image = block.image;
@@ -88,6 +121,7 @@ export const BookPage: React.FC<BookPageProps> = ({
       let figureStyle: React.CSSProperties = {};
 
       if (placement.mode === 'float-right') {
+        // In RTL: float-right sits on the right margin (the start of the RTL reading flow)
         figureClass += 'float-right ml-4 mb-2.5 clear-right ';
         figureStyle = {
           width: `${placement.widthPercent || 45}%`,
@@ -146,9 +180,12 @@ export const BookPage: React.FC<BookPageProps> = ({
             />
           </div>
 
-          {/* Caption in classic novel style */}
+          {/* Caption */}
           {placement.caption && placement.caption.trim() && (
-            <figcaption className="mt-1 text-[8.5pt] italic text-slate-700 text-center font-serif leading-tight">
+            <figcaption
+              dir={blockDir}
+              className="mt-1 text-[8.5pt] italic text-slate-700 text-center font-serif leading-tight"
+            >
               {placement.caption}
             </figcaption>
           )}
@@ -164,8 +201,13 @@ export const BookPage: React.FC<BookPageProps> = ({
     return (
       <p
         key={`${block.blockId}-${idx}`}
+        dir={blockDir}
         className={`hyphens-auto ${
-          effectiveTypo.textAlign === 'justify' ? 'text-justify' : 'text-left'
+          blockDir === 'rtl'
+            ? 'text-right'
+            : effectiveTypo.textAlign === 'justify'
+            ? 'text-justify'
+            : 'text-left'
         }`}
         style={{
           fontFamily: effectiveTypo.bodyFontFamily,
@@ -182,10 +224,12 @@ export const BookPage: React.FC<BookPageProps> = ({
   };
 
   const isTwoCol = template.columns.count === 2;
+  const formattedPageNum = formatNumerals(String(page.pageNumber), numSystem);
 
   return (
     <div
       data-testid={`book-page-${page.pageNumber}`}
+      dir={isRtl ? 'rtl' : 'ltr'}
       className={`book-page-container relative border border-slate-200 select-text ${
         isVerso ? 'book-page-shadow-left' : 'book-page-shadow-right'
       }`}
@@ -209,7 +253,7 @@ export const BookPage: React.FC<BookPageProps> = ({
         backgroundPosition: 'center',
       }}
     >
-      {/* Decorative Inset Border Layer (if enabled in Expert Design settings) */}
+      {/* Decorative Inset Border Layer */}
       {design?.borderEnabled && (
         <div
           data-testid="page-decorative-border"
@@ -228,7 +272,17 @@ export const BookPage: React.FC<BookPageProps> = ({
       )}
 
       {/* Spine crease shadow effect */}
-      <div className={`book-spine-crease ${isVerso ? 'book-spine-left' : 'book-spine-right'}`} />
+      <div
+        className={`book-spine-crease ${
+          isRtl
+            ? isVerso
+              ? 'book-spine-right'
+              : 'book-spine-left'
+            : isVerso
+            ? 'book-spine-left'
+            : 'book-spine-right'
+        }`}
+      />
 
       {/* Running Top Header */}
       <div
@@ -238,16 +292,16 @@ export const BookPage: React.FC<BookPageProps> = ({
         style={{ color: design?.headerFooterColor || '#64748b' }}
       >
         {/* Top-outside page number */}
-        {effectiveTypo.pageNumberPosition === 'top-outside' && isVerso && (
-          <span className="font-mono text-xs font-bold">{page.pageNumber}</span>
+        {effectiveTypo.pageNumberPosition === 'top-outside' && (isRtl ? !isVerso : isVerso) && (
+          <span className="font-mono text-xs font-bold">{formattedPageNum}</span>
         )}
 
-        <span className={`truncate max-w-[85%] ${isVerso ? 'text-left' : 'text-right ml-auto'}`}>
+        <span className={`truncate max-w-[85%] ${isRtl ? 'text-right mr-auto' : isVerso ? 'text-left' : 'text-right ml-auto'}`}>
           {page.headerText || ''}
         </span>
 
-        {effectiveTypo.pageNumberPosition === 'top-outside' && !isVerso && (
-          <span className="font-mono text-xs font-bold">{page.pageNumber}</span>
+        {effectiveTypo.pageNumberPosition === 'top-outside' && (isRtl ? isVerso : !isVerso) && (
+          <span className="font-mono text-xs font-bold">{formattedPageNum}</span>
         )}
       </div>
 
@@ -260,14 +314,14 @@ export const BookPage: React.FC<BookPageProps> = ({
         ) : isTwoCol && page.columns && page.columns.length === 2 ? (
           /* Two-Column Grid */
           <div
-            className="grid grid-cols-2 h-full gap-x-4 overflow-hidden"
+            className={`grid grid-cols-2 h-full gap-x-4 overflow-hidden ${isRtl ? 'direction-rtl' : ''}`}
             style={{ columnGap: template.columns.gap }}
           >
             <div className="flex flex-col justify-start overflow-hidden">
-              {page.columns[0].map((block, idx) => renderBlock(block, idx, page.columns![0]))}
+              {page.columns[isRtl ? 1 : 0].map((block, idx) => renderBlock(block, idx, page.columns![isRtl ? 1 : 0]))}
             </div>
             <div className="flex flex-col justify-start overflow-hidden">
-              {page.columns[1].map((block, idx) => renderBlock(block, idx, page.columns![1]))}
+              {page.columns[isRtl ? 0 : 1].map((block, idx) => renderBlock(block, idx, page.columns![isRtl ? 0 : 1]))}
             </div>
           </div>
         ) : (
@@ -281,13 +335,17 @@ export const BookPage: React.FC<BookPageProps> = ({
         className={`h-6 text-[9pt] font-sans flex items-center select-none pt-2 ${
           effectiveTypo.pageNumberPosition === 'bottom-center'
             ? 'justify-center'
+            : isRtl
+            ? isVerso
+              ? 'justify-end'
+              : 'justify-start'
             : isVerso
             ? 'justify-start'
             : 'justify-end'
         } ${effectiveTypo.pageNumberPosition === 'top-outside' || page.isBlankPage ? 'invisible' : 'visible'}`}
         style={{ color: design?.headerFooterColor || '#64748b' }}
       >
-        <span className="font-medium tracking-wider">{page.pageNumber}</span>
+        <span className="font-medium tracking-wider">{formattedPageNum}</span>
       </div>
     </div>
   );
