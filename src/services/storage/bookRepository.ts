@@ -237,14 +237,22 @@ export class CloudBookRepository implements IBookRepository {
   async saveBook(book: BookProject): Promise<BookProject> {
     const existing = await cloudProjectService.getProjectById(book.id, this.userContext);
     if (existing) {
-      return cloudProjectService.updateProject(book.id, book, this.userContext, book.revision);
+      const existingRev = existing.revision ?? 1;
+      const expectedRev = (book.revision && book.revision >= existingRev) ? book.revision : existing.revision;
+      const saved = await cloudProjectService.updateProject(book.id, book, this.userContext, expectedRev);
+      book.revision = saved.revision;
+      return saved;
     }
-    return cloudProjectService.createProject(book, this.userContext);
+    const created = await cloudProjectService.createProject(book, this.userContext);
+    book.revision = created.revision;
+    return created;
   }
 
   saveBookSync(book: BookProject): BookProject {
-    // For sync calls, fire async and return optimistic state
-    this.saveBook(book).catch((err) => console.error('Cloud save failed:', err));
+    // For sync calls, fire async and update revision on resolution
+    this.saveBook(book).then((saved) => {
+      book.revision = saved.revision;
+    }).catch((err) => console.error('Cloud save failed:', err));
     return { ...book, storageBackend: 'cloud', updatedAt: new Date().toISOString() };
   }
 

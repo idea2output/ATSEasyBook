@@ -79,6 +79,17 @@ export default function PublisherDashboardPage() {
           <div className="flex items-center space-x-3">
             <button
               type="button"
+              id="dashboard-admin-templates-btn"
+              onClick={() => router.push('/admin/templates')}
+              className="inline-flex items-center space-x-2 px-3.5 py-2.5 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg shadow-2xs hover:bg-purple-100 transition-colors"
+              title="Admin Template Editor"
+            >
+              <ShieldCheck className="w-4 h-4 text-purple-600" />
+              <span>Admin Templates</span>
+            </button>
+
+            <button
+              type="button"
               id="load-sample-novel-btn"
               onClick={() => handleCreateNewBook(true)}
               disabled={isCreating}

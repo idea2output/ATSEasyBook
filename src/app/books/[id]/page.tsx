@@ -250,11 +250,11 @@ export default function BookEditorPage() {
       if (autosaveTimerRef.current) {
         clearTimeout(autosaveTimerRef.current);
       }
-      autosaveTimerRef.current = setTimeout(() => {
+      autosaveTimerRef.current = setTimeout(async () => {
         setIsSaving(true);
         try {
           if (bookRef.current) {
-            const saved = bookRepository.saveBookSync(bookRef.current);
+            const saved = await bookRepository.saveBook(bookRef.current);
             bookRef.current = saved;
             hasUnsavedChangesRef.current = false;
             setHasUnsavedChanges(false);

@@ -6,6 +6,7 @@ import { Navbar } from '@/components/common/Navbar';
 import { templateRepository } from '@/services/templates/templateRepository';
 import { bookRepository } from '@/services/storage/bookRepository';
 import { BookTemplate, EditorMode } from '@/types/book';
+import { CUSTOM_PAGE_DEFAULT } from '@/services/templates/templateRegistry';
 import {
   BookOpen,
   Sparkles,
@@ -33,9 +34,14 @@ export default function CreateBookPage() {
 
   useEffect(() => {
     const list = templateRepository.getAllTemplatesSync();
-    setTemplates(list);
-    if (list.length > 0 && !list.find((t) => t.id === selectedTemplateId)) {
-      setSelectedTemplateId(list[0].id);
+    // In Expert mode, include Custom Page option
+    const combined = [...list];
+    if (!combined.some((t) => t.id === 'custom-page-template')) {
+      combined.push(CUSTOM_PAGE_DEFAULT);
+    }
+    setTemplates(combined);
+    if (combined.length > 0 && !combined.find((t) => t.id === selectedTemplateId)) {
+      setSelectedTemplateId(combined[0].id);
     }
   }, []);
 

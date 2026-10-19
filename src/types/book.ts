@@ -116,6 +116,90 @@ export interface TemplateImageConstraints {
   minDpi: number;
 }
 
+export type TemplateUnit = 'in' | 'mm' | 'pt';
+
+export type TemplateLayerType =
+  | 'solid'
+  | 'image'
+  | 'rectangle'
+  | 'line'
+  | 'shape'
+  | 'border'
+  | 'text'
+  | 'page-number'
+  | 'guide';
+
+export interface TemplateLayer {
+  id: string;
+  name: string;
+  type: TemplateLayerType;
+  xInches: number;
+  yInches: number;
+  widthInches: number;
+  heightInches: number;
+  rotationDeg?: number;
+  opacity?: number; // 0 to 1
+  zIndex: number;
+  locked: boolean;
+  visible: boolean;
+  printOnly?: boolean; // Does not export to reflowable EPUB
+  nonPrintingGuide?: boolean; // Guide lines, never printed in PDF
+  // Style properties
+  fillColor?: string; // hex e.g. '#e2e8f0'
+  strokeColor?: string; // hex
+  strokeWidthPt?: number;
+  strokeStyle?: 'solid' | 'dashed' | 'dotted' | 'double';
+  borderRadiusPt?: number;
+  // Image properties
+  imageDataUrl?: string;
+  imageFit?: 'cover' | 'contain' | 'tile';
+  // Text properties
+  text?: string;
+  fontFamily?: string;
+  fontSizePt?: number;
+  textColor?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  // Mirroring on verso (left/even) pages
+  mirrorOnVerso?: boolean;
+}
+
+export type ContentZoneType =
+  | 'flowing-text'
+  | 'chapter-heading'
+  | 'image'
+  | 'caption'
+  | 'header'
+  | 'footer'
+  | 'page-number';
+
+export interface ContentZone {
+  id: string;
+  name: string;
+  type: ContentZoneType;
+  xInches: number;
+  yInches: number;
+  widthInches: number;
+  heightInches: number;
+  columns?: 1 | 2;
+  columnGapInches?: number;
+  mirrorOnVerso?: boolean;
+}
+
+export type TemplateStatus = 'draft' | 'published' | 'archived';
+export type TemplateVisibility = 'private' | 'organization' | 'team' | 'admin-only';
+
+export interface TemplateGovernance {
+  status: TemplateStatus;
+  visibility: TemplateVisibility;
+  version: number;
+  ownerId?: string;
+  organizationId?: string;
+  authorName?: string;
+  createdAt: string;
+  updatedAt: string;
+  allowedTeamIds?: string[];
+}
+
 export interface BookTemplate {
   id: string;
   name: string;
@@ -123,6 +207,7 @@ export interface BookTemplate {
   description: string;
   suitability?: string | string[]; // e.g. "Novels, Memoirs, Fiction" or ["Novels", "Memoirs"]
   isCustom?: boolean; // true if created by user
+  isArchived?: boolean; // true if archived
   design?: Partial<PageDesignSettings>; // default design settings for this template
   pageWidthInches: number;
   pageHeightInches: number;
@@ -136,6 +221,11 @@ export interface BookTemplate {
   // Budget parameters for pagination estimation
   linesPerPage: number;
   charsPerLine: number;
+  // Phase 8 Admin / Custom Template extensions
+  layers?: TemplateLayer[];
+  contentZones?: ContentZone[];
+  governance?: TemplateGovernance;
+  unit?: TemplateUnit;
 }
 
 export type EditorMode = 'beginner' | 'expert';
@@ -286,7 +376,8 @@ export interface PreflightIssue {
     | 'color'
     | 'language'
     | 'epub'
-    | 'hindi';
+    | 'hindi'
+    | 'template';
   title: string;
   description: string;
   pageNumber?: number;
@@ -303,7 +394,8 @@ export interface PreflightIssue {
     | 'open-color'
     | 'open-language'
     | 'open-hindi'
-    | 'open-epub';
+    | 'open-epub'
+    | 'open-template';
   actionLabel?: string;
 }
 

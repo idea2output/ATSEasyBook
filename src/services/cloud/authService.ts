@@ -56,6 +56,37 @@ export class AuthService {
   }
 
   /**
+   * Retrieves the currently active user profile from browser session storage if available.
+   */
+  public getCurrentUserSync(): UserProfile | null {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+      return null;
+    }
+    try {
+      const raw = window.localStorage.getItem('ats_auth_session_v1');
+      if (!raw) return null;
+      const parsed: AuthSession = JSON.parse(raw);
+      return parsed?.user || null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Persists an authenticated session to local storage.
+   */
+  public saveSession(session: AuthSession): void {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+      return;
+    }
+    try {
+      window.localStorage.setItem('ats_auth_session_v1', JSON.stringify(session));
+    } catch (err) {
+      console.warn('Failed to save session to localStorage', err);
+    }
+  }
+
+  /**
    * Logs a security action with zero-leak sanitization.
    */
   public logAudit(action: string, userId: string, userEmail: string, details: Record<string, any>, projectId?: string): void {

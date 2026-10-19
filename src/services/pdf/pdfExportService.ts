@@ -315,6 +315,85 @@ export async function generatePrintPdf(
       doc.setLineDashPattern([], 0);
     }
 
+    const isRtl = project.languageSettings?.direction === 'rtl';
+    const numSystem = project.languageSettings?.numeralSystem || 'western';
+
+    // -------------------------------------------------------------
+    // Fixed Template Layers (Admin & Governed Design Layers)
+    // -------------------------------------------------------------
+    if (template.layers && template.layers.length > 0) {
+      // Sort by zIndex ascending so background layers draw first
+      const sortedLayers = [...template.layers].sort((a, b) => (a.zIndex ?? 1) - (b.zIndex ?? 1));
+      for (const layer of sortedLayers) {
+        if (layer.visible === false || layer.nonPrintingGuide) continue;
+
+        const effectiveLayerX = (layer.mirrorOnVerso && page.isLeft)
+          ? originX + (trimW - (layer.xInches + layer.widthInches))
+          : originX + layer.xInches;
+        const effectiveLayerY = originY + layer.yInches;
+
+        try {
+          if (layer.type === 'solid' || layer.type === 'rectangle') {
+            const fillHex = layer.fillColor || '#e2e8f0';
+            const fillCmyk = hexToCmyk(fillHex, { isBackground: true, blackHandling });
+            doc.setFillColor(fillCmyk.c, fillCmyk.m, fillCmyk.y, fillCmyk.k);
+
+            if (layer.strokeColor && (layer.strokeWidthPt || 0) > 0) {
+              const strkCmyk = hexToCmyk(layer.strokeColor, { isBlackRule: true, blackHandling });
+              doc.setDrawColor(strkCmyk.c, strkCmyk.m, strkCmyk.y, strkCmyk.k);
+              doc.setLineWidth((layer.strokeWidthPt || 1) / 72);
+              if (layer.borderRadiusPt && layer.borderRadiusPt > 0) {
+                const rInches = layer.borderRadiusPt / 72;
+                doc.roundedRect(effectiveLayerX, effectiveLayerY, layer.widthInches, layer.heightInches, rInches, rInches, 'FD');
+              } else {
+                doc.rect(effectiveLayerX, effectiveLayerY, layer.widthInches, layer.heightInches, 'FD');
+              }
+            } else {
+              if (layer.borderRadiusPt && layer.borderRadiusPt > 0) {
+                const rInches = layer.borderRadiusPt / 72;
+                doc.roundedRect(effectiveLayerX, effectiveLayerY, layer.widthInches, layer.heightInches, rInches, rInches, 'F');
+              } else {
+                doc.rect(effectiveLayerX, effectiveLayerY, layer.widthInches, layer.heightInches, 'F');
+              }
+            }
+          } else if (layer.type === 'line') {
+            const lineCmyk = hexToCmyk(layer.strokeColor || '#000000', { isBlackRule: true, blackHandling });
+            doc.setDrawColor(lineCmyk.c, lineCmyk.m, lineCmyk.y, lineCmyk.k);
+            doc.setLineWidth((layer.strokeWidthPt || 1) / 72);
+            doc.line(
+              effectiveLayerX,
+              effectiveLayerY,
+              effectiveLayerX + layer.widthInches,
+              effectiveLayerY + (layer.heightInches > 0.05 ? layer.heightInches : 0)
+            );
+          } else if (layer.type === 'shape') {
+            const shapeCmyk = hexToCmyk(layer.fillColor || '#cbd5e1', { isBackground: true, blackHandling });
+            doc.setFillColor(shapeCmyk.c, shapeCmyk.m, shapeCmyk.y, shapeCmyk.k);
+            const rInches = (layer.borderRadiusPt || 8) / 72;
+            doc.roundedRect(effectiveLayerX, effectiveLayerY, layer.widthInches, layer.heightInches, rInches, rInches, 'F');
+          } else if (layer.type === 'image' && layer.imageDataUrl) {
+            const imgFormat = layer.imageDataUrl.includes('png') ? 'PNG' : 'JPEG';
+            doc.addImage(layer.imageDataUrl, imgFormat, effectiveLayerX, effectiveLayerY, layer.widthInches, layer.heightInches);
+          } else if (layer.type === 'text' && layer.text) {
+            const txtCmyk = hexToCmyk(layer.textColor || '#000000', { isBodyText: true, blackHandling });
+            doc.setTextColor(txtCmyk.c, txtCmyk.m, txtCmyk.y, txtCmyk.k);
+            doc.setFontSize(layer.fontSizePt || 10);
+            doc.text(layer.text, effectiveLayerX, effectiveLayerY + ((layer.fontSizePt || 10) / 72));
+          } else if (layer.type === 'page-number') {
+            const numCmyk = hexToCmyk(layer.textColor || '#64748b', { isBodyText: true, blackHandling });
+            doc.setTextColor(numCmyk.c, numCmyk.m, numCmyk.y, numCmyk.k);
+            doc.setFontSize(layer.fontSizePt || 9);
+            const displayNum = formatNumerals(String(page.pageNumber), numSystem);
+            doc.text(displayNum, effectiveLayerX + layer.widthInches / 2, effectiveLayerY + layer.heightInches / 2, {
+              align: 'center',
+            });
+          }
+        } catch (layerErr) {
+          console.warn(`Could not render layer ${layer.id} in PDF:`, layerErr);
+        }
+      }
+    }
+
     // Optional Crop Marks
     if (options.includeCropMarks) {
       drawCropMarks(doc, originX, originY, trimW, trimH, bleed);
@@ -332,8 +411,6 @@ export async function generatePrintPdf(
     }
 
     // Margins (with RTL Mirroring)
-    const isRtl = project.languageSettings?.direction === 'rtl';
-    const numSystem = project.languageSettings?.numeralSystem || 'western';
     const isLeft = page.isLeft;
     const insideMargin = template.margins.insideInches + template.margins.gutterInches;
     const outsideMargin = template.margins.outsideInches;

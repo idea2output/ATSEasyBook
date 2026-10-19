@@ -313,7 +313,7 @@ export const BookSpreadPreview: React.FC<BookSpreadPreviewProps> = ({
       </div>
 
       {/* Pages Canvas Area */}
-      <div className="flex-1 overflow-auto p-4 sm:p-8 flex items-start justify-center">
+      <div id="book-spread-preview-canvas" className="flex-1 overflow-auto p-4 sm:p-8 flex items-start justify-center">
         <div
           className="m-auto transition-transform duration-150 origin-top flex items-center justify-center py-4"
           style={{ transform: `scale(${zoomScale})` }}

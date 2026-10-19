@@ -375,6 +375,79 @@ export const MAGAZINE_REPORT_A4: BookTemplate = {
   charsPerLine: 45, // Characters per column in 2-column layout
 };
 
+export const CUSTOM_PAGE_DEFAULT: BookTemplate = {
+  id: 'custom-page-template',
+  name: 'Custom Page',
+  category: 'fiction',
+  description: 'Fully customizable page geometry, margins, columns, typography, and visual styling.',
+  suitability: 'Any Book Format, Custom Sizes',
+  isCustom: true,
+  pageWidthInches: 6.0,
+  pageHeightInches: 9.0,
+  bleedInches: 0.125,
+  safeAreaInches: 0.25,
+  margins: {
+    top: '0.75in',
+    bottom: '0.75in',
+    inside: '0.75in',
+    outside: '0.625in',
+    gutter: '0.125in',
+    topInches: 0.75,
+    bottomInches: 0.75,
+    insideInches: 0.75,
+    outsideInches: 0.625,
+    gutterInches: 0.125,
+  },
+  columns: {
+    count: 1,
+    gap: '0in',
+    gapInches: 0,
+  },
+  typography: {
+    fontFamily: 'Georgia, Cambria, "Times New Roman", serif',
+    bodyFontSizePt: 10.5,
+    bodyLineHeight: 1.45,
+    chapterHeadingFontSizePt: 19,
+    chapterHeadingLineHeight: 1.25,
+    paragraphIndentInches: 0.25,
+    paragraphSpacingPt: 0,
+    textAlign: 'justify',
+    headingStyle: {
+      fontFamily: 'Georgia, Cambria, serif',
+      fontSizePt: 19,
+      alignment: 'center',
+      textTransform: 'none',
+      spaceBeforePt: 24,
+      spaceAfterPt: 14,
+    },
+  },
+  headersFooters: {
+    showRunningHeaders: true,
+    showPageNumbers: true,
+    pageNumberPosition: 'bottom-center',
+    runningHeaderFormat: 'title-chapter',
+  },
+  imageConstraints: {
+    maxInlineWidthPercent: 100,
+    maxFloatWidthPercent: 50,
+    minDpi: 300,
+  },
+  linesPerPage: 32,
+  charsPerLine: 64,
+  design: {
+    backgroundColor: '#ffffff',
+    borderEnabled: false,
+    borderColor: '#cbd5e1',
+    borderWidthPt: 1,
+    borderStyle: 'solid',
+    borderRadiusPt: 0,
+    borderInsetInches: 0.35,
+    textColor: '#0f172a',
+    headingColor: '#1e293b',
+    headerFooterColor: '#64748b',
+  },
+};
+
 export const AVAILABLE_TEMPLATES: BookTemplate[] = [
   CLASSIC_NOVEL_6X9,
   DIGEST_NOVEL_5_5X8_5,
@@ -385,8 +458,29 @@ export const AVAILABLE_TEMPLATES: BookTemplate[] = [
 ];
 
 export function getTemplateById(id: string): BookTemplate {
+  if (id === 'custom-page-template') {
+    return CUSTOM_PAGE_DEFAULT;
+  }
   const template = AVAILABLE_TEMPLATES.find((t) => t.id === id);
-  return template || CLASSIC_NOVEL_6X9;
+  if (template) return template;
+
+  // Check localStorage for saved custom templates if in browser environment
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') {
+    try {
+      const stored = window.localStorage.getItem('ats_easybook_custom_templates_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const match = parsed.find((t: any) => t.id === id);
+          if (match) return match;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  return CLASSIC_NOVEL_6X9;
 }
 
 /**
@@ -398,7 +492,11 @@ export function getEffectiveTypography(
   authorName: string = ''
 ): TypographySettings {
   return {
-    bodyFontFamily: overrides?.bodyFontFamily || template.typography.fontFamily,
+    bodyFontFamily:
+      overrides?.bodyFontFamily ||
+      (template.typography as any).bodyFontFamily ||
+      template.typography.fontFamily ||
+      'Georgia, serif',
     bodyFontSizePt: overrides?.bodyFontSizePt || template.typography.bodyFontSizePt,
     bodyLineHeight: overrides?.bodyLineHeight || template.typography.bodyLineHeight,
     paragraphIndentInches:
@@ -419,8 +517,8 @@ export function getEffectiveTypography(
       overrides?.suppressChapterHeader !== undefined ? overrides.suppressChapterHeader : true,
     authorName: overrides?.authorName || authorName || '',
     pageNumberPosition:
-      overrides?.pageNumberPosition || template.headersFooters.pageNumberPosition,
+      overrides?.pageNumberPosition || template.headersFooters?.pageNumberPosition || 'bottom-center',
     runningHeaderContent:
-      overrides?.runningHeaderContent || template.headersFooters.runningHeaderFormat,
+      overrides?.runningHeaderContent || template.headersFooters?.runningHeaderFormat || 'title-chapter',
   };
 }

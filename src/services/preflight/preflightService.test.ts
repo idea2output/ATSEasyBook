@@ -235,4 +235,73 @@ describe('preflightService', () => {
     expect(fontIssue?.severity).toBe('warning');
     expect(fontIssue?.category).toBe('font');
   });
+
+  describe('Phase 8 Template Preflight Verification', () => {
+    it('detects invalid template dimensions and margin overflows', () => {
+      const invalidTmpl = {
+        ...CLASSIC_NOVEL_6X9,
+        pageWidthInches: 0,
+      };
+      const summary = runPrintPreflight(baseProject, invalidTmpl, mockPages);
+      expect(summary.issues.some((i) => i.id === 'err-template-invalid-dimensions')).toBe(true);
+    });
+
+    it('warns when full-color background is configured without bleed', () => {
+      const zeroBleedTmpl = {
+        ...CLASSIC_NOVEL_6X9,
+        bleedInches: 0,
+      };
+      const coloredBgProject = {
+        ...baseProject,
+        design: {
+          backgroundColor: '#fef08a',
+        },
+      };
+      const summary = runPrintPreflight(coloredBgProject, zeroBleedTmpl, mockPages);
+      expect(summary.issues.some((i) => i.id === 'warn-template-insufficient-bleed')).toBe(true);
+    });
+
+    it('flags error for missing image source in template fixed layer', () => {
+      const tmplWithBrokenImageLayer = {
+        ...CLASSIC_NOVEL_6X9,
+        layers: [
+          {
+            id: 'l-logo',
+            name: 'Publisher Logo',
+            type: 'image' as const,
+            xInches: 0.5,
+            yInches: 0.5,
+            widthInches: 1.5,
+            heightInches: 1.0,
+            zIndex: 2,
+            locked: true,
+            visible: true,
+            imageDataUrl: '', // missing
+          },
+        ],
+      };
+      const summary = runPrintPreflight(baseProject, tmplWithBrokenImageLayer, mockPages);
+      expect(summary.issues.some((i) => i.id === 'err-layer-missing-image-l-logo')).toBe(true);
+    });
+
+    it('warns when a content zone penetrates the safe area boundary', () => {
+      const tmplWithUnsafeZone = {
+        ...CLASSIC_NOVEL_6X9,
+        safeAreaInches: 0.25,
+        contentZones: [
+          {
+            id: 'z-head',
+            name: 'Unsafe Heading Zone',
+            type: 'chapter-heading' as const,
+            xInches: 0.1, // < safeAreaInches 0.25
+            yInches: 0.1,
+            widthInches: 5.8,
+            heightInches: 1.0,
+          },
+        ],
+      };
+      const summary = runPrintPreflight(baseProject, tmplWithUnsafeZone, mockPages);
+      expect(summary.issues.some((i) => i.id === 'warn-zone-safe-area-z-head')).toBe(true);
+    });
+  });
 });

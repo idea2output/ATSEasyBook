@@ -254,7 +254,7 @@ export function runPrintPreflight(
   }
 
   // Warning 4: Non-embedded or fallback system fonts
-  const primaryFont = effectiveTypo.bodyFontFamily.split(',')[0].trim().replace(/['"]/g, '');
+  const primaryFont = (effectiveTypo.bodyFontFamily || 'Georgia').split(',')[0].trim().replace(/['"]/g, '');
   const unrecommendedFonts = ['Courier', 'Arial', 'Comic Sans MS'];
   if (unrecommendedFonts.includes(primaryFont)) {
     issues.push({
@@ -640,6 +640,127 @@ export function runPrintPreflight(
         actionType: 'open-hindi',
         actionLabel: 'Configure Hindi',
       });
+    }
+  }
+
+  // -------------------------------------------------------------
+  // Phase 8: Template Geometry, Layers & Content Zones Preflight
+  // -------------------------------------------------------------
+  // 1. Template Geometry Validation
+  if (template.pageWidthInches <= 0 || template.pageHeightInches <= 0) {
+    issues.push({
+      id: 'err-template-invalid-dimensions',
+      severity: 'error',
+      category: 'template',
+      title: 'Invalid template page dimensions',
+      description: `Page dimensions (${template.pageWidthInches}" × ${template.pageHeightInches}") must be positive values greater than 0.`,
+      actionType: 'open-template',
+      actionLabel: 'Edit Template',
+    });
+  } else {
+    passedCount++;
+  }
+
+  // Horizontal Margins overflow
+  const totalHorizMargins =
+    (template.margins.insideInches || 0) +
+    (template.margins.outsideInches || 0) +
+    (template.margins.gutterInches || 0);
+  if (totalHorizMargins >= template.pageWidthInches) {
+    issues.push({
+      id: 'err-template-margins-overflow',
+      severity: 'error',
+      category: 'template',
+      title: 'Template margins exceed page width',
+      description: `Horizontal margins and gutter total (${totalHorizMargins.toFixed(2)}") equal or exceed trim width (${template.pageWidthInches}").`,
+      actionType: 'open-template',
+      actionLabel: 'Adjust Margins',
+    });
+  }
+
+  // 2. Bleed sufficiency for full-bleed background designs
+  const hasPageBg =
+    (project.design?.backgroundColor && project.design.backgroundColor.toLowerCase() !== '#ffffff') ||
+    project.design?.backgroundImage ||
+    project.design?.backgroundImageUrl;
+  if (hasPageBg && (template.bleedInches || 0) <= 0) {
+    issues.push({
+      id: 'warn-template-insufficient-bleed',
+      severity: 'warning',
+      category: 'template',
+      title: 'Insufficient bleed for full-color background',
+      description: 'The layout includes an edge-to-edge background color or image, but bleed is set to 0. Commercial print houses recommend at least 0.125" (3.175mm) bleed to prevent unprinted edges.',
+      actionType: 'open-template',
+      actionLabel: 'Set Bleed',
+    });
+  } else {
+    passedCount++;
+  }
+
+  // 3. Content Zones checks
+  if (template.contentZones && template.contentZones.length > 0) {
+    for (const zone of template.contentZones) {
+      if (zone.widthInches <= 0 || zone.heightInches <= 0) {
+        issues.push({
+          id: `err-zone-zero-dim-${zone.id}`,
+          severity: 'error',
+          category: 'template',
+          title: `Content zone "${zone.name}" has zero dimensions`,
+          description: `Zone "${zone.name}" has non-positive width or height and cannot accommodate content flow.`,
+          actionType: 'open-template',
+          actionLabel: 'Fix Zone',
+        });
+      }
+
+      // Check if zone penetrates safe area
+      const safe = template.safeAreaInches || 0.25;
+      if (
+        zone.xInches < safe ||
+        zone.yInches < safe ||
+        zone.xInches + zone.widthInches > template.pageWidthInches - safe + 0.05 ||
+        zone.yInches + zone.heightInches > template.pageHeightInches - safe + 0.05
+      ) {
+        issues.push({
+          id: `warn-zone-safe-area-${zone.id}`,
+          severity: 'warning',
+          category: 'template',
+          title: `Content zone "${zone.name}" extends outside safe area`,
+          description: `Content zone "${zone.name}" is positioned closer to the trim line than the configured ${safe}" safe margin. Content near trim edges risks being trimmed during binding.`,
+          actionType: 'open-template',
+          actionLabel: 'Adjust Zone',
+        });
+      }
+    }
+  }
+
+  // 4. Fixed Layers checks
+  if (template.layers && template.layers.length > 0) {
+    for (const layer of template.layers) {
+      if (layer.type === 'image' && !layer.imageDataUrl) {
+        issues.push({
+          id: `err-layer-missing-image-${layer.id}`,
+          severity: 'error',
+          category: 'template',
+          title: `Fixed image layer "${layer.name}" missing image source`,
+          description: `Template layer "${layer.name}" is configured as an image but has no asset file or image URL attached.`,
+          actionType: 'open-template',
+          actionLabel: 'Attach Image',
+        });
+      }
+
+      // Check excessive bleed overflow (> 0.5in past bleed edge)
+      const maxAllowedX = template.pageWidthInches + (template.bleedInches || 0) * 2 + 0.5;
+      if (layer.xInches + layer.widthInches > maxAllowedX) {
+        issues.push({
+          id: `warn-layer-bleed-overflow-${layer.id}`,
+          severity: 'warning',
+          category: 'template',
+          title: `Layer "${layer.name}" extends significantly outside bleed`,
+          description: `Layer "${layer.name}" extends more than 0.5" past the trim and bleed boundary.`,
+          actionType: 'open-template',
+          actionLabel: 'Resize Layer',
+        });
+      }
     }
   }
 

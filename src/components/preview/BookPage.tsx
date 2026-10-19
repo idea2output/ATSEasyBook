@@ -271,6 +271,75 @@ export const BookPage: React.FC<BookPageProps> = ({
         />
       )}
 
+      {/* Template Fixed Design Layers (Governed Admin & Custom Layers) */}
+      {template.layers && template.layers.length > 0 && template.layers.map((layer) => {
+        if (layer.visible === false || layer.nonPrintingGuide) return null;
+        const effectiveX = (layer.mirrorOnVerso && isVerso)
+          ? template.pageWidthInches - (layer.xInches + layer.widthInches)
+          : layer.xInches;
+
+        return (
+          <div
+            key={layer.id}
+            data-testid={`template-layer-${layer.id}`}
+            className="absolute pointer-events-none overflow-hidden"
+            style={{
+              left: `${effectiveX}in`,
+              top: `${layer.yInches}in`,
+              width: `${layer.widthInches}in`,
+              height: `${layer.heightInches}in`,
+              zIndex: layer.zIndex ?? 1,
+              opacity: layer.opacity ?? 1,
+              transform: layer.rotationDeg ? `rotate(${layer.rotationDeg}deg)` : undefined,
+              backgroundColor: layer.fillColor || (layer.type === 'solid' ? '#e2e8f0' : undefined),
+              borderColor: layer.strokeColor,
+              borderWidth: layer.strokeWidthPt ? `${layer.strokeWidthPt}pt` : undefined,
+              borderStyle: layer.strokeStyle || 'solid',
+              borderRadius: layer.borderRadiusPt ? `${layer.borderRadiusPt}pt` : (layer.type === 'shape' ? '9999px' : undefined),
+            }}
+          >
+            {layer.type === 'image' && layer.imageDataUrl && (
+              <img
+                src={layer.imageDataUrl}
+                alt={layer.name || 'Template Asset'}
+                className="w-full h-full"
+                style={{ objectFit: layer.imageFit === 'cover' ? 'cover' : 'contain' }}
+              />
+            )}
+            {layer.type === 'text' && layer.text && (
+              <div
+                className="w-full h-full flex items-center"
+                style={{
+                  fontFamily: layer.fontFamily || effectiveTypo.bodyFontFamily,
+                  fontSize: `${layer.fontSizePt || 10}pt`,
+                  color: layer.textColor || '#0f172a',
+                  justifyContent: layer.textAlign === 'center' ? 'center' : layer.textAlign === 'right' ? 'flex-end' : 'flex-start',
+                }}
+              >
+                {layer.text}
+              </div>
+            )}
+            {layer.type === 'page-number' && (
+              <div
+                className="w-full h-full flex items-center justify-center font-mono text-xs font-semibold"
+                style={{ color: layer.textColor || '#64748b' }}
+              >
+                {formattedPageNum}
+              </div>
+            )}
+            {layer.type === 'line' && (
+              <div
+                className="w-full h-full"
+                style={{
+                  backgroundColor: layer.strokeColor || '#94a3b8',
+                  height: layer.strokeWidthPt ? `${layer.strokeWidthPt}pt` : '1px',
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+
       {/* Spine crease shadow effect */}
       <div
         className={`book-spine-crease ${

@@ -99,9 +99,26 @@ export class StandardPaginationEngine implements IPaginationEngine {
     const insidePt = (template.margins.insideInches + template.margins.gutterInches) * 72;
     const outsidePt = template.margins.outsideInches * 72;
 
-    const contentWidthPt = Math.max(100, pageWidthPt - (insidePt + outsidePt));
-    const isTwoColumn = template.columns.count === 2;
-    const colGapPt = isTwoColumn ? template.columns.gapInches * 72 : 0;
+    // Check if template defines an explicit flowing-text content zone
+    const textZone = template.contentZones?.find((z) => z.type === 'flowing-text');
+    const isTwoColumn = textZone?.columns === 2 || template.columns.count === 2;
+    const colGapPt = isTwoColumn ? ((textZone?.columnGapInches ?? template.columns.gapInches) * 72) : 0;
+
+    let contentWidthPt: number;
+    let standardUsableHeightPt: number;
+
+    // Reserved header and footer allowances in points
+    const headerAllowancePt = template.headersFooters.showRunningHeaders ? 34 : 0;
+    const footerAllowancePt = (template.headersFooters.showPageNumbers && effectiveTypo.pageNumberPosition !== 'top-outside') ? 26 : 0;
+
+    if (textZone && textZone.widthInches > 0 && textZone.heightInches > 0) {
+      contentWidthPt = textZone.widthInches * 72;
+      standardUsableHeightPt = textZone.heightInches * 72;
+    } else {
+      contentWidthPt = Math.max(100, pageWidthPt - (insidePt + outsidePt));
+      standardUsableHeightPt = Math.max(200, pageHeightPt - (topPt + bottomPt) - headerAllowancePt - footerAllowancePt);
+    }
+
     const colWidthPt = isTwoColumn ? (contentWidthPt - colGapPt) / 2 : contentWidthPt;
 
     // Body font metrics
@@ -112,13 +129,8 @@ export class StandardPaginationEngine implements IPaginationEngine {
     };
     const bodyLineHeightPt = Math.max(10, effectiveTypo.bodyFontSizePt * effectiveTypo.bodyLineHeight);
 
-    // Reserved header and footer allowances in points
-    const headerAllowancePt = template.headersFooters.showRunningHeaders ? 34 : 0;
-    const footerAllowancePt = (template.headersFooters.showPageNumbers && effectiveTypo.pageNumberPosition !== 'top-outside') ? 26 : 0;
-
     // Usable body height
-    const standardUsableHeightPt = Math.max(200, pageHeightPt - (topPt + bottomPt) - headerAllowancePt - footerAllowancePt);
-    const openingUsableHeightPt = effectiveTypo.suppressChapterHeader
+    const openingUsableHeightPt = effectiveTypo.suppressChapterHeader && !textZone
       ? Math.max(200, pageHeightPt - (topPt + bottomPt) - footerAllowancePt)
       : standardUsableHeightPt;
 

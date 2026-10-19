@@ -27,6 +27,11 @@ import { LanguageSettingsPanel } from '@/components/language/LanguageSettingsPan
 import { HindiPublishingPanel } from '@/components/hindi/HindiPublishingPanel';
 import { EpubExportModal } from '@/components/export/EpubExportModal';
 import { SaveTemplateModal } from '@/components/templates/SaveTemplateModal';
+import { CustomPageSettingsModal } from '@/components/templates/CustomPageSettingsModal';
+import { TemplateLibraryModal } from '@/components/templates/TemplateLibraryModal';
+import { ReflowWarningModal } from '@/components/templates/ReflowWarningModal';
+import { versionService } from '@/services/cloud/versionService';
+import { useRouter } from 'next/navigation';
 import { CommentsPanel } from '@/components/collaboration/CommentsPanel';
 import { VersionHistoryPanel } from '@/components/version/VersionHistoryPanel';
 import {
@@ -118,8 +123,13 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   onOpenSharingModal,
   onOpenJobModal,
 }) => {
+  const router = useRouter();
   const [internalTab, setInternalTab] = useState<EditorTabType>('raw');
   const [isSaveTemplateModalOpen, setIsSaveTemplateModalOpen] = useState<boolean>(false);
+  const [isCustomPageModalOpen, setIsCustomPageModalOpen] = useState<boolean>(false);
+  const [isTemplateLibraryModalOpen, setIsTemplateLibraryModalOpen] = useState<boolean>(false);
+  const [pendingReflowTemplate, setPendingReflowTemplate] = useState<BookTemplate | null>(null);
+  const [reflowDifferences, setReflowDifferences] = useState<string[]>([]);
   const [isEpubModalOpen, setIsEpubModalOpen] = useState<boolean>(false);
 
   const isExpert = book.editorMode === 'expert';
@@ -133,6 +143,39 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   const setActiveTab = onTabChange || setInternalTab;
 
   const allTemplates = templateRepository.getAllTemplatesSync();
+
+  const handleSelectTemplateWithReflowCheck = async (targetTemplateId: string) => {
+    if (targetTemplateId === 'custom-page-template') {
+      onUpdateBook({ templateId: 'custom-page-template' });
+      setIsCustomPageModalOpen(true);
+      return;
+    }
+
+    const target = templateRepository.getTemplateById(targetTemplateId);
+    const impact = templateRepository.detectReflowImpact(template, target);
+    if (impact.hasMaterialImpact) {
+      setPendingReflowTemplate(target);
+      setReflowDifferences(impact.differences);
+    } else {
+      onUpdateBook({ templateId: target.id });
+    }
+  };
+
+  const handleConfirmReflowTemplate = async () => {
+    if (!pendingReflowTemplate) return;
+    try {
+      await versionService.createSnapshot(
+        book,
+        'auto-pre-template',
+        `Switched template to "${pendingReflowTemplate.name}"`
+      );
+    } catch (err) {
+      console.warn('Could not snapshot version before template change:', err);
+    }
+    onUpdateBook({ templateId: pendingReflowTemplate.id });
+    setPendingReflowTemplate(null);
+    setReflowDifferences([]);
+  };
 
   const [showFormattingTips, setShowFormattingTips] = useState<boolean>(false);
   const [insertDropdownBlockId, setInsertDropdownBlockId] = useState<string | null>(null);
@@ -310,7 +353,7 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
               id="template-select"
               disabled={isViewer || isReviewer}
               value={book.templateId}
-              onChange={(e) => onUpdateBook({ templateId: e.target.value })}
+              onChange={(e) => handleSelectTemplateWithReflowCheck(e.target.value)}
               className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
             >
               {allTemplates.map((tmpl) => (
@@ -318,19 +361,48 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
                   {tmpl.name} {tmpl.isCustom ? '• Custom ' : ''}({tmpl.pageWidthInches}&quot; × {tmpl.pageHeightInches}&quot;)
                 </option>
               ))}
+              {isExpert && (
+                <option value="custom-page-template">✦ Custom Page (Configurable)</option>
+              )}
             </select>
 
             {isExpert && !isViewer && !isReviewer && (
-              <button
-                type="button"
-                id="save-as-template-btn"
-                onClick={() => setIsSaveTemplateModalOpen(true)}
-                className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-semibold transition-colors"
-                title="Save current layout as a reusable template"
-              >
-                <Bookmark className="w-3.5 h-3.5" />
-                <span>Save as Template</span>
-              </button>
+              <div className="flex items-center space-x-1.5">
+                {(book.templateId === 'custom-page-template' || template.isCustom) && (
+                  <button
+                    type="button"
+                    id="open-custom-page-settings-btn"
+                    onClick={() => setIsCustomPageModalOpen(true)}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-semibold transition-colors"
+                    title="Configure Custom Page Geometry & Margins"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Page Settings</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  id="open-template-library-btn"
+                  onClick={() => setIsTemplateLibraryModalOpen(true)}
+                  className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-semibold transition-colors"
+                  title="Browse Reusable & Organization Templates"
+                >
+                  <Bookmark className="w-3.5 h-3.5" />
+                  <span>Template Library</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="save-as-template-btn"
+                  onClick={() => setIsSaveTemplateModalOpen(true)}
+                  className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-semibold transition-colors"
+                  title="Save current layout as a reusable template"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Save as Template</span>
+                </button>
+              </div>
             )}
           </div>
 
@@ -1031,6 +1103,57 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
           onSaved={(newTmpl) => {
             onUpdateBook({ templateId: newTmpl.id });
           }}
+        />
+      )}
+
+      {isCustomPageModalOpen && (
+        <CustomPageSettingsModal
+          isOpen={isCustomPageModalOpen}
+          onClose={() => setIsCustomPageModalOpen(false)}
+          currentTemplate={template}
+          onApplyCustomPage={async (customTmpl) => {
+            try {
+              const saved = await templateRepository.saveCustomTemplate(customTmpl);
+              onUpdateBook({
+                templateId: saved.id,
+                design: { ...(book.design || {}), ...(saved.design || {}) },
+              });
+            } catch (err) {
+              console.error('Failed to apply custom page:', err);
+            }
+          }}
+        />
+      )}
+
+      {isTemplateLibraryModalOpen && (
+        <TemplateLibraryModal
+          isOpen={isTemplateLibraryModalOpen}
+          onClose={() => setIsTemplateLibraryModalOpen(false)}
+          currentBook={book}
+          currentTemplate={template}
+          onSelectTemplate={(selectedTmpl) => {
+            onUpdateBook({ templateId: selectedTmpl.id });
+          }}
+          onOpenAdminEditor={() => {
+            router.push('/admin/templates');
+          }}
+          onOpenCustomPage={() => {
+            setIsCustomPageModalOpen(true);
+          }}
+        />
+      )}
+
+      {pendingReflowTemplate && (
+        <ReflowWarningModal
+          isOpen={Boolean(pendingReflowTemplate)}
+          onClose={() => {
+            setPendingReflowTemplate(null);
+            setReflowDifferences([]);
+          }}
+          onConfirm={handleConfirmReflowTemplate}
+          currentTemplate={template}
+          newTemplate={pendingReflowTemplate}
+          differences={reflowDifferences}
         />
       )}
 
