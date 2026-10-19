@@ -8,6 +8,11 @@ import {
   TypographySettings,
 } from '@/types/book';
 import { getEffectiveTypography } from '@/services/templates/templateRegistry';
+import {
+  measureTextWidthPt,
+  wrapParagraphIntoLines,
+  FontMetricsOptions,
+} from './textLayoutMeasurer';
 
 export interface IPaginationOptions {
   bookTitle?: string;
@@ -26,45 +31,51 @@ export interface IPaginationEngine {
 }
 
 /**
- * Calculates estimated vertical line budget for an image placement based on template geometry.
+ * Calculates accurate vertical line budget for an image placement based on physical geometry.
  */
 export function calculateImageLinesBudget(
   placement: ImagePlacement,
   image: BookImage,
-  template: BookTemplate
+  template: BookTemplate,
+  bodyLineHeightPt: number = 14
 ): number {
-  const maxLines = template.linesPerPage || 32;
   const crop = placement.crop || { x: 0, y: 0, width: 1, height: 1 };
   const effectiveWidth = Math.max(1, image.width * (crop.width || 1));
   const effectiveHeight = Math.max(1, image.height * (crop.height || 1));
-  const aspectRatio = effectiveWidth / effectiveHeight; // width / height
+  const aspectRatio = effectiveWidth / effectiveHeight;
 
-  // Relative width fraction (e.g. 100% -> 1.0, 45% -> 0.45)
+  // Physical column width in points
+  const insidePt = (template.margins.insideInches + template.margins.gutterInches) * 72;
+  const outsidePt = template.margins.outsideInches * 72;
+  const contentWidthPt = (template.pageWidthInches * 72) - (insidePt + outsidePt);
+  const colWidthPt = template.columns.count === 2
+    ? (contentWidthPt - (template.columns.gapInches * 72)) / 2
+    : contentWidthPt;
+
   const widthFraction = Math.max(0.1, Math.min(1.0, (placement.widthPercent || 100) / 100));
+  const renderWidthPt = colWidthPt * widthFraction;
+  const renderHeightPt = renderWidthPt / Math.max(0.2, aspectRatio);
 
-  // Height fraction calculation based on aspect ratio
-  const heightFraction = (widthFraction / Math.max(0.2, aspectRatio)) * 0.62;
-  let estimatedLines = Math.round(maxLines * heightFraction);
-
-  // Additional budget for caption text
+  let totalImageHeightPt = renderHeightPt + 8; // image margin
   if (placement.caption && placement.caption.trim()) {
-    estimatedLines += 2;
+    totalImageHeightPt += bodyLineHeightPt * 2; // caption + caption margin
   }
 
-  // Margin buffer
-  estimatedLines += 1;
-
-  // Clamp budget so an image takes between 3 and 85% of page lines
-  return Math.max(3, Math.min(Math.floor(maxLines * 0.85), estimatedLines));
+  const estimatedLines = Math.max(3, Math.ceil(totalImageHeightPt / Math.max(8, bodyLineHeightPt)));
+  const pageLines = template.linesPerPage || 32;
+  return Math.min(Math.floor(pageLines * 0.85), estimatedLines);
 }
 
 /**
- * Phase 3 Pagination Engine:
- * - Supports 1-column and 2-column page templates (e.g. A4 Magazine/Report).
- * - Implements widow and orphan prevention (no isolated headings at column/page bottom, minimum 2 lines when splitting paragraphs).
- * - Supports chapter opening rules: always new page vs. recto-only (with intentional blank verso pages).
- * - Supports running header suppressions on opening pages, and customizable running header content.
- * - Handles image reflow for inline, full-width, and float-right modes.
+ * Phase 7 Accurate Text-Flow Pagination Engine:
+ * - Computes true usable vertical space using physical point dimensions, margins, running headers, and footers.
+ * - Fills all usable vertical column and page space before advancing, eliminating premature blank gaps.
+ * - Performs accurate typography wrapping via textLayoutMeasurer.
+ * - Enforces publishing standard 2-line widow and orphan prevention.
+ * - Supports 1-column and 2-column templates with correct LTR (left->right) and RTL (right->left) reading order.
+ * - Preserves recto-only chapter opening rules with intentional blank pages.
+ * - Accurately integrates inline, full-width, and float-right image reflow.
+ * - Guarantees 100% text conservation: no lost, duplicated, or overlapping blocks.
  */
 export class StandardPaginationEngine implements IPaginationEngine {
   paginate(
@@ -78,17 +89,46 @@ export class StandardPaginationEngine implements IPaginationEngine {
 
     const effectiveTypo = getEffectiveTypography(template, options?.typography, options?.authorName);
 
-    // Compute effective lines and characters based on typography overrides
-    const sizeScale = effectiveTypo.bodyFontSizePt / (template.typography.bodyFontSizePt || 10.5);
-    const lineScale = effectiveTypo.bodyLineHeight / (template.typography.bodyLineHeight || 1.45);
-    const maxLines = Math.max(15, Math.floor(template.linesPerPage / Math.max(0.7, sizeScale * lineScale)));
-    const baseCharsPerLine = Math.max(25, Math.floor(template.charsPerLine / Math.max(0.7, sizeScale)));
+    // ------------------------------------------------------------------
+    // Physical Page Geometry in Points (72 pt = 1 inch)
+    // ------------------------------------------------------------------
+    const pageWidthPt = template.pageWidthInches * 72;
+    const pageHeightPt = template.pageHeightInches * 72;
+    const topPt = template.margins.topInches * 72;
+    const bottomPt = template.margins.bottomInches * 72;
+    const insidePt = (template.margins.insideInches + template.margins.gutterInches) * 72;
+    const outsidePt = template.margins.outsideInches * 72;
 
+    const contentWidthPt = Math.max(100, pageWidthPt - (insidePt + outsidePt));
     const isTwoColumn = template.columns.count === 2;
+    const colGapPt = isTwoColumn ? template.columns.gapInches * 72 : 0;
+    const colWidthPt = isTwoColumn ? (contentWidthPt - colGapPt) / 2 : contentWidthPt;
+
+    // Body font metrics
+    const bodyFontOptions: FontMetricsOptions = {
+      fontFamily: effectiveTypo.bodyFontFamily,
+      fontSizePt: effectiveTypo.bodyFontSizePt,
+      lineHeight: effectiveTypo.bodyLineHeight,
+    };
+    const bodyLineHeightPt = Math.max(10, effectiveTypo.bodyFontSizePt * effectiveTypo.bodyLineHeight);
+
+    // Reserved header and footer allowances in points
+    const headerAllowancePt = template.headersFooters.showRunningHeaders ? 34 : 0;
+    const footerAllowancePt = (template.headersFooters.showPageNumbers && effectiveTypo.pageNumberPosition !== 'top-outside') ? 26 : 0;
+
+    // Usable body height
+    const standardUsableHeightPt = Math.max(200, pageHeightPt - (topPt + bottomPt) - headerAllowancePt - footerAllowancePt);
+    const openingUsableHeightPt = effectiveTypo.suppressChapterHeader
+      ? Math.max(200, pageHeightPt - (topPt + bottomPt) - footerAllowancePt)
+      : standardUsableHeightPt;
+
+    // True maximum lines per column
+    const standardMaxLines = Math.max(18, Math.floor(standardUsableHeightPt / bodyLineHeightPt));
+    const openingMaxLines = Math.max(18, Math.floor(openingUsableHeightPt / bodyLineHeightPt));
+
+    // Images and placements map
     const images = options?.images || [];
     const placements = options?.placements || [];
-
-    // Map placements by anchored block ID
     const placementsByBlock = new Map<string, ImagePlacement[]>();
     for (const p of placements) {
       const list = placementsByBlock.get(p.blockId) || [];
@@ -103,17 +143,18 @@ export class StandardPaginationEngine implements IPaginationEngine {
     // Active page column states
     let col1Blocks: PageBlock[] = [];
     let col2Blocks: PageBlock[] = [];
-    let currentColIndex: 0 | 1 = 0; // 0 = left column, 1 = right column
+    let currentColIndex: 0 | 1 = 0; // 0 = left column (LTR) or right column (RTL), 1 = opposite column
     let col1LinesUsed = 0;
     let col2LinesUsed = 0;
+    let pageIsChapterOpening = false;
 
-    // Track active float-right state
-    interface FloatState {
-      linesRemaining: number;
-      widthPercent: number;
-    }
-    const layoutContext: { activeFloat: FloatState | null } = {
+    // Active float state: lines remaining and width percent
+    const layoutContext: { activeFloat: { linesRemaining: number; widthPercent: number } | null } = {
       activeFloat: null,
+    };
+
+    const getActiveMaxLines = (): number => {
+      return (pageIsChapterOpening && currentColIndex === 0) ? openingMaxLines : standardMaxLines;
     };
 
     const getActiveColBlocks = (): PageBlock[] => {
@@ -155,13 +196,16 @@ export class StandardPaginationEngine implements IPaginationEngine {
       }
     };
 
-    const pushPage = (isChapterOpening?: boolean) => {
+    const pushPage = (isOpening: boolean = false) => {
       const isLeft = pageNumber % 2 === 0;
       const allBlocksOnPage = [...col1Blocks, ...col2Blocks];
 
       if (allBlocksOnPage.length > 0) {
         const hasChapterHeading =
-          isChapterOpening === true || allBlocksOnPage.some((b) => b.type === 'chapter-heading');
+          isOpening === true ||
+          pageIsChapterOpening ||
+          allBlocksOnPage.some((b) => b.type === 'chapter-heading');
+
         const header = computeHeaderText(isLeft, hasChapterHeading);
         pages.push({
           pageNumber,
@@ -178,17 +222,18 @@ export class StandardPaginationEngine implements IPaginationEngine {
       col1LinesUsed = 0;
       col2LinesUsed = 0;
       currentColIndex = 0;
+      pageIsChapterOpening = false;
       layoutContext.activeFloat = null;
     };
 
-    const advanceColumnOrPage = (isChapterOpening: boolean = false) => {
+    const advanceColumnOrPage = (isOpening: boolean = false) => {
       if (isTwoColumn && currentColIndex === 0) {
         // In two-column layout, advance from column 1 to column 2 on the same page
         currentColIndex = 1;
         layoutContext.activeFloat = null;
       } else {
         // Advance to next page
-        pushPage(isChapterOpening);
+        pushPage(isOpening);
       }
     };
 
@@ -200,7 +245,8 @@ export class StandardPaginationEngine implements IPaginationEngine {
         const image = images.find((img) => img.id === placement.imageId);
         if (!image) continue;
 
-        const imageLines = calculateImageLinesBudget(placement, image, template);
+        const imageLines = calculateImageLinesBudget(placement, image, template, bodyLineHeightPt);
+        const maxLines = getActiveMaxLines();
 
         if (placement.mode === 'float-right') {
           const remainingLines = maxLines - getActiveColLinesUsed();
@@ -243,10 +289,13 @@ export class StandardPaginationEngine implements IPaginationEngine {
     for (let bIndex = 0; bIndex < blocks.length; bIndex++) {
       const block = blocks[bIndex];
 
+      // -------------------------------------------------------------
+      // CHAPTER HEADING
+      // -------------------------------------------------------------
       if (block.type === 'chapter-heading') {
         currentChapterTitle = block.text;
 
-        // Chapter opening: flush current page if not already clean
+        // Flush active page content if not already clean
         if (col1Blocks.length > 0 || col2Blocks.length > 0) {
           pushPage(false);
         }
@@ -268,9 +317,24 @@ export class StandardPaginationEngine implements IPaginationEngine {
           }
         }
 
-        // Heading size budget
-        const headingLinesCount = Math.max(1, Math.ceil(block.text.length / (baseCharsPerLine * 0.75)));
-        const headingTotalBudget = 4 + headingLinesCount + 2;
+        pageIsChapterOpening = true;
+
+        // Heading typographic lines calculation
+        const headingFontOptions: FontMetricsOptions = {
+          fontFamily: effectiveTypo.headingFontFamily,
+          fontSizePt: effectiveTypo.headingFontSizePt,
+          lineHeight: template.typography.chapterHeadingLineHeight || 1.25,
+          isBold: true,
+        };
+        const wrappedHeadingLines = wrapParagraphIntoLines(block.text, colWidthPt, headingFontOptions, 0);
+        const headingLineCount = Math.max(1, wrappedHeadingLines.length);
+
+        const headingTotalHeightPt =
+          headingLineCount * (effectiveTypo.headingFontSizePt * (template.typography.chapterHeadingLineHeight || 1.25)) +
+          (template.typography.headingStyle.spaceBeforePt || 20) +
+          (template.typography.headingStyle.spaceAfterPt || 12);
+
+        const headingEquivalentBodyLines = Math.max(3, Math.ceil(headingTotalHeightPt / bodyLineHeightPt));
 
         col1Blocks.push({
           blockId: block.id,
@@ -279,12 +343,15 @@ export class StandardPaginationEngine implements IPaginationEngine {
           direction: block.direction,
           language: block.language,
         });
-        col1LinesUsed += headingTotalBudget;
+        col1LinesUsed += headingEquivalentBodyLines;
 
         processPlacementsForBlock(block.id);
         continue;
       }
 
+      // -------------------------------------------------------------
+      // PAGE BREAK
+      // -------------------------------------------------------------
       if (block.type === 'page-break') {
         if (col1Blocks.length > 0 || col2Blocks.length > 0) {
           pushPage(false);
@@ -292,101 +359,146 @@ export class StandardPaginationEngine implements IPaginationEngine {
         continue;
       }
 
+      // -------------------------------------------------------------
+      // PARAGRAPH, QUOTE, OR CAPTION
+      // -------------------------------------------------------------
+      const trimmedText = (block.text || '').trim();
+      if (!trimmedText) continue;
+
       const isQuote = block.type === 'quote';
       const isCaption = block.type === 'caption';
 
-      // Paragraph block
-      const words = block.text.split(/\s+/).filter(Boolean);
-      const totalWords = words.length;
-      if (totalWords === 0) continue;
+      // Check first-line indent eligibility (no indent for quotes, captions, or immediately following headings)
+      const prevBlock = bIndex > 0 ? blocks[bIndex - 1] : null;
+      const isAfterHeading = prevBlock && prevBlock.type === 'chapter-heading';
+      const firstLineIndentPt = (!isAfterHeading && !isQuote && !isCaption && effectiveTypo.paragraphIndentInches > 0)
+        ? effectiveTypo.paragraphIndentInches * 72
+        : 0;
 
-      let remainingWords = [...words];
+      // Font options for paragraph / quote
+      const currentFontOptions: FontMetricsOptions = isQuote
+        ? { ...bodyFontOptions, isItalic: true }
+        : bodyFontOptions;
 
-      while (remainingWords.length > 0) {
-        const remainingLines = maxLines - getActiveColLinesUsed();
+      // Wrap paragraph into exact lines based on column width and active float
+      let wrappedLines = wrapParagraphIntoLines(
+        trimmedText,
+        colWidthPt,
+        currentFontOptions,
+        firstLineIndentPt,
+        layoutContext.activeFloat
+          ? {
+              linesRemaining: layoutContext.activeFloat.linesRemaining,
+              floatWidthPercent: layoutContext.activeFloat.widthPercent,
+              marginPt: 12,
+            }
+          : undefined
+      );
 
-        // Check for column/page break
+      const totalLinesNeeded = wrappedLines.length;
+      if (totalLinesNeeded === 0) continue;
+
+      const paragraphSpacingLines = effectiveTypo.paragraphSpacingPt > 0
+        ? Math.max(1, Math.ceil(effectiveTypo.paragraphSpacingPt / bodyLineHeightPt))
+        : 0;
+
+      let lineCursor = 0;
+      let isFirstFragment = true;
+
+      while (lineCursor < totalLinesNeeded) {
+        const maxLines = getActiveMaxLines();
+        const linesUsed = getActiveColLinesUsed();
+        const remainingLines = maxLines - linesUsed;
+
+        // If column is completely filled, advance column or page
         if (remainingLines <= 0) {
           advanceColumnOrPage();
           continue;
         }
 
-        // Determine effective characters per line based on active float
-        let effectiveChars = baseCharsPerLine;
-        if (layoutContext.activeFloat && layoutContext.activeFloat.linesRemaining > 0) {
-          const widthFraction = layoutContext.activeFloat.widthPercent / 100;
-          effectiveChars = Math.max(18, Math.floor(baseCharsPerLine * (1 - widthFraction)));
-        }
+        const linesLeftInParagraph = totalLinesNeeded - lineCursor;
 
-        const paragraphText = remainingWords.join(' ');
-        const estimatedLines = Math.max(1, Math.ceil(paragraphText.length / effectiveChars));
-        const paragraphSpacingLines = effectiveTypo.paragraphSpacingPt > 0 ? 1 : 0;
-        const requiredLines = estimatedLines + paragraphSpacingLines;
+        // CASE 1: Remaining lines in this paragraph fit entirely in current column
+        if (linesLeftInParagraph <= remainingLines) {
+          const linesToTake = wrappedLines.slice(lineCursor, totalLinesNeeded);
+          const fragmentText = linesToTake.map((l) => l.text).join(' ');
 
-        if (remainingLines >= requiredLines) {
-          // Fits entirely in current column/page
           getActiveColBlocks().push({
             blockId: block.id,
             type: block.type,
-            text: paragraphText,
-            isContinuation: remainingWords.length < totalWords,
+            text: fragmentText,
+            isContinuation: !isFirstFragment,
             direction: block.direction,
             language: block.language,
           });
-          addLinesToActiveCol(requiredLines);
+
+          addLinesToActiveCol(linesLeftInParagraph + paragraphSpacingLines);
 
           if (layoutContext.activeFloat) {
             layoutContext.activeFloat.linesRemaining = Math.max(
               0,
-              layoutContext.activeFloat.linesRemaining - estimatedLines
+              layoutContext.activeFloat.linesRemaining - linesLeftInParagraph
             );
             if (layoutContext.activeFloat.linesRemaining === 0) {
               layoutContext.activeFloat = null;
             }
           }
-          remainingWords = [];
-        } else if (remainingLines >= 3 && estimatedLines >= 4) {
-          // Partial fit across boundary with WIDOW/ORPHAN prevention:
-          // Minimum 2 lines on current page AND minimum 2 lines on continuation page
-          const linesToFit = Math.max(2, remainingLines - paragraphSpacingLines);
-          const charsToFit = linesToFit * effectiveChars;
 
-          let accumulatedChars = 0;
-          let splitIndex = 0;
-          for (let i = 0; i < remainingWords.length; i++) {
-            if (accumulatedChars + remainingWords[i].length + 1 > charsToFit) {
-              break;
-            }
-            accumulatedChars += remainingWords[i].length + 1;
-            splitIndex = i + 1;
-          }
-
-          const remainingWordsCount = remainingWords.length - splitIndex;
-          const estimatedContinuationLines = Math.ceil(
-            remainingWords.slice(splitIndex).join(' ').length / effectiveChars
-          );
-
-          // Only split if BOTH sides have at least 2 lines (publishing standard)
-          if (splitIndex >= 4 && remainingWordsCount >= 4 && estimatedContinuationLines >= 2) {
-            const firstPart = remainingWords.slice(0, splitIndex).join(' ');
-            remainingWords = remainingWords.slice(splitIndex);
-
-            getActiveColBlocks().push({
-              blockId: block.id,
-              type: block.type,
-              text: firstPart,
-              isContinuation: remainingWords.length + splitIndex < totalWords,
-              direction: block.direction,
-              language: block.language,
-            });
-
-            advanceColumnOrPage();
-          } else {
-            // Cannot satisfy 2-line widow/orphan rule: move full remaining paragraph to next column/page
-            advanceColumnOrPage();
-          }
+          lineCursor = totalLinesNeeded; // Finished
         } else {
-          // Less than 3 lines remaining: move to next column/page
+          // CASE 2: Paragraph is larger than remaining lines in this column
+          // We must split with strict WIDOW and ORPHAN prevention:
+          // - Orphan rule: minimum 2 lines at the bottom of the current column
+          // - Widow rule: minimum 2 lines at the top of the next column
+
+          if (remainingLines < 2) {
+            // Cannot satisfy 2-line orphan rule: advance to next column/page
+            advanceColumnOrPage();
+            continue;
+          }
+
+          // Compute lines to take while protecting against a 1-line widow on next column
+          let takeCount = remainingLines;
+          const continuationLines = linesLeftInParagraph - takeCount;
+
+          if (continuationLines === 1) {
+            // Leaving 1 line on next column would create a widow: hold back 1 line if possible
+            if (takeCount - 1 >= 2) {
+              takeCount = takeCount - 1; // Take remainingLines - 1, leaves 2 lines on next column
+            } else {
+              // Cannot satisfy both 2-line orphan and 2-line widow rules:
+              // Move entire remaining paragraph to next column/page!
+              advanceColumnOrPage();
+              continue;
+            }
+          }
+
+          const linesToTake = wrappedLines.slice(lineCursor, lineCursor + takeCount);
+          const fragmentText = linesToTake.map((l) => l.text).join(' ');
+
+          getActiveColBlocks().push({
+            blockId: block.id,
+            type: block.type,
+            text: fragmentText,
+            isContinuation: !isFirstFragment,
+            direction: block.direction,
+            language: block.language,
+          });
+
+          addLinesToActiveCol(takeCount);
+          lineCursor += takeCount;
+          isFirstFragment = false;
+
+          if (layoutContext.activeFloat) {
+            layoutContext.activeFloat.linesRemaining = Math.max(
+              0,
+              layoutContext.activeFloat.linesRemaining - takeCount
+            );
+            if (layoutContext.activeFloat.linesRemaining === 0) {
+              layoutContext.activeFloat = null;
+            }
+          }
+
           advanceColumnOrPage();
         }
       }
