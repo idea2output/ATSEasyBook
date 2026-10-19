@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import {
   FileText,
@@ -8,6 +10,7 @@ import {
   Layers,
   CheckCircle2,
   ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 
 export const HowItWorksSection: React.FC = () => {
@@ -64,42 +67,46 @@ export const HowItWorksSection: React.FC = () => {
   ];
 
   return (
-    <section id="how-it-works" className="py-24 bg-slate-950 text-white border-b border-slate-900 scroll-mt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-20">
+    <section id="how-it-works" className="relative py-28 bg-[#030712] text-white border-b border-white/[0.08] scroll-mt-16 overflow-hidden">
+      {/* Ambient Red Glow */}
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-rose-600/10 blur-[120px] pointer-events-none rounded-full" />
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-20">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono text-rose-400 font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full glass-pill text-xs font-mono text-rose-400 font-bold uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-rose-500" />
             <span>Workflow Engineering</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
             How ATS Tech Powers the Production Pipeline
           </h2>
-          <p className="text-slate-400 text-base leading-relaxed">
+          <p className="text-slate-300 text-base leading-relaxed">
             Eliminating the manual handoffs between editorial manuscript drafting, typographic pagination, preflight auditing, and commercial imposition.
           </p>
         </div>
 
-        {/* Part 1: EasyBook 5-Step Process */}
+        {/* Part 1: EasyBook 5-Step Process (Material 3 Glassmorphic Cards) */}
         <div className="space-y-8">
           <div className="flex items-center space-x-3">
-            <span className="w-3 h-3 rounded-full bg-rose-600" />
-            <h3 className="text-xl font-bold text-white tracking-tight">
+            <span className="w-3 h-3 rounded-full bg-rose-600 shadow-[0_0_10px_#f43f5e]" />
+            <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
               ATS EasyBook Publishing Pipeline
             </h3>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5">
             {easyBookSteps.map((s, idx) => (
               <div
                 key={s.step}
-                className="p-6 bg-slate-900/60 border border-slate-800 rounded-2xl flex flex-col justify-between space-y-4 relative group hover:border-slate-700 transition-all"
+                className="p-6 glass-panel hover:glass-panel-elevated hover:border-rose-500/50 rounded-2xl flex flex-col justify-between space-y-4 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_40px_rgba(225,29,72,0.18)] group relative overflow-hidden"
               >
-                <div className="space-y-3">
+                <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-xs font-bold text-rose-500">
+                    <span className="font-mono text-xs font-extrabold text-rose-400 bg-rose-500/10 border border-rose-500/25 px-2.5 py-1 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.2)]">
                       STEP {s.step}
                     </span>
-                    <div className="p-2 bg-slate-800 rounded-lg">
+                    <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-xl group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-colors">
                       {s.icon}
                     </div>
                   </div>
@@ -108,12 +115,12 @@ export const HowItWorksSection: React.FC = () => {
                     {s.title}
                   </h4>
 
-                  <p className="text-slate-400 text-xs leading-relaxed">
+                  <p className="text-slate-300 text-xs leading-relaxed">
                     {s.desc}
                   </p>
                 </div>
 
-                <div className="pt-2 text-[10px] font-mono text-slate-500">
+                <div className="pt-2 text-[10px] font-mono text-slate-500 font-medium">
                   Step {idx + 1} of 5
                 </div>
               </div>
@@ -121,24 +128,24 @@ export const HowItWorksSection: React.FC = () => {
           </div>
         </div>
 
-        {/* Part 2: ATS Imposition Workflow at a High Level */}
-        <div className="p-8 sm:p-10 bg-slate-900/40 border border-slate-800/80 rounded-3xl space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-            <div className="flex items-center space-x-3">
-              <div className="p-2.5 bg-slate-800 rounded-xl text-slate-300">
-                <Layers className="w-6 h-6" />
+        {/* Part 2: ATS Imposition Workflow (Material 3 Elevated Glass Console) */}
+        <div className="p-8 sm:p-10 glass-panel-elevated rounded-[28px] border border-white/[0.12] space-y-8 shadow-2xl relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-5">
+            <div className="flex items-center space-x-3.5">
+              <div className="p-3 bg-white/[0.06] border border-white/[0.12] rounded-2xl text-slate-200 shadow-inner">
+                <Layers className="w-6 h-6 text-rose-500" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">
+                <h3 className="text-lg sm:text-xl font-bold text-white">
                   ATS Imposition Engine Workflow
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Prepress Signature Layout Architecture for Commercial Offset &amp; Digital Presses
                 </p>
               </div>
             </div>
 
-            <span className="px-3 py-1 bg-slate-800 text-slate-300 rounded-full font-mono text-xs font-bold w-fit">
+            <span className="px-3.5 py-1.5 glass-pill text-rose-400 rounded-full font-mono text-xs font-bold w-fit shadow-md">
               CTP Bridge Architecture
             </span>
           </div>
@@ -147,12 +154,12 @@ export const HowItWorksSection: React.FC = () => {
             {impositionSteps.map((st, i) => (
               <div
                 key={i}
-                className="p-4 bg-slate-950/70 border border-slate-800/70 rounded-xl space-y-2"
+                className="p-5 bg-slate-950/80 border border-white/[0.08] hover:border-rose-500/40 rounded-xl space-y-2.5 transition-all group"
               >
-                <div className="text-xs font-mono font-bold text-rose-400">
+                <div className="text-xs font-mono font-bold text-rose-400 group-hover:text-rose-300 transition-colors">
                   {st.phase}
                 </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
+                <p className="text-xs text-slate-300 leading-relaxed">
                   {st.desc}
                 </p>
               </div>

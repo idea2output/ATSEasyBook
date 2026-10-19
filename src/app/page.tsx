@@ -28,7 +28,7 @@ export default function AtsTechHomePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 text-white selection:bg-rose-600 selection:text-white">
+    <div className="min-h-screen flex flex-col bg-[#030712] text-white selection:bg-rose-600 selection:text-white">
       {/* Public Marketing Navigation */}
       <PublicNavbar onSampleBookLaunch={handleLoadSampleBook} />
 

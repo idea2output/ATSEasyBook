@@ -126,57 +126,60 @@ const UPCOMING_PRODUCTS: ComingSoonProduct[] = [
 
 export const ComingSoonSection: React.FC = () => {
   return (
-    <section id="coming-soon" className="py-24 bg-slate-900 text-white border-b border-slate-800 scroll-mt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+    <section id="coming-soon" className="relative py-28 bg-[#030712] text-white border-b border-white/[0.08] scroll-mt-16 overflow-hidden">
+      {/* Ambient Red Glow */}
+      <div className="absolute top-1/2 right-10 w-[600px] h-[600px] bg-rose-600/8 blur-[120px] pointer-events-none rounded-full" />
+
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-950 border border-slate-800 text-xs font-mono text-rose-400 font-bold uppercase tracking-wider">
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full glass-pill text-xs font-mono text-rose-400 font-bold uppercase tracking-wider">
             <Clock className="w-3.5 h-3.5 text-rose-500" />
             <span>Platform Roadmap</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
             Upcoming ATS Tech Systems
           </h2>
-          <p className="text-slate-400 text-base leading-relaxed">
+          <p className="text-slate-300 text-base leading-relaxed">
             The next generation of specialized engineering modules designed to complete the full enterprise print-manufacturing workflow.
           </p>
         </div>
 
-        {/* 12-Card Grid */}
+        {/* 12-Card Grid (Material 3 Glassmorphism) */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {UPCOMING_PRODUCTS.map((prod) => (
             <div
               key={prod.id}
-              className="p-6 bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 rounded-2xl flex flex-col justify-between space-y-4 transition-all hover:-translate-y-1 hover:shadow-xl group"
+              className="p-6 glass-panel hover:glass-panel-elevated hover:border-rose-500/50 rounded-2xl flex flex-col justify-between space-y-4 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_16px_40px_rgba(225,29,72,0.18)] group relative overflow-hidden"
             >
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {/* Header Row */}
                 <div className="flex items-center justify-between">
-                  <div className="p-2.5 bg-slate-900 border border-slate-800 rounded-xl group-hover:border-rose-500/40 transition-colors">
+                  <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 group-hover:bg-rose-500/20 group-hover:border-rose-500/40 transition-colors">
                     {prod.icon}
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-mono font-bold uppercase tracking-wider">
+                  <span className="px-2.5 py-1 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-300 text-[10px] font-mono font-bold uppercase tracking-wider shadow-[0_0_8px_rgba(244,63,94,0.25)]">
                     Roadmap
                   </span>
                 </div>
 
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 block">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block font-semibold">
                     {prod.category}
                   </span>
-                  <h3 className="text-base font-bold text-white group-hover:text-rose-400 transition-colors mt-0.5">
+                  <h3 className="text-base font-bold text-white group-hover:text-rose-400 transition-colors mt-1">
                     {prod.name}
                   </h3>
                 </div>
 
-                <p className="text-slate-400 text-xs leading-relaxed">
+                <p className="text-slate-300 text-xs leading-relaxed">
                   {prod.description}
                 </p>
               </div>
 
               {/* Technical Scope Highlight */}
-              <div className="pt-3 border-t border-slate-800/80">
-                <span className="text-[10px] font-mono text-slate-400 block truncate" title={prod.scopeHighlight}>
+              <div className="pt-3.5 border-t border-white/[0.08]">
+                <span className="text-[10px] font-mono text-slate-400 block truncate font-medium group-hover:text-rose-300 transition-colors" title={prod.scopeHighlight}>
                   {prod.scopeHighlight}
                 </span>
               </div>

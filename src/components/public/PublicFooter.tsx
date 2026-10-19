@@ -5,7 +5,7 @@ import { ShieldCheck, Mail, ArrowUpRight, FileText, Globe } from 'lucide-react';
 
 export const PublicFooter: React.FC = () => {
   return (
-    <footer className="bg-slate-950 text-slate-400 border-t border-slate-900 pt-16 pb-12 text-xs">
+    <footer className="bg-[#02050c] text-slate-400 border-t border-white/[0.08] pt-16 pb-12 text-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         {/* Main 4-Column Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
