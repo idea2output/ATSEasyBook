@@ -24,6 +24,8 @@ export interface DatabaseData {
   org_templates: CollectionData;
   audit_logs: CollectionData;
   password_resets: CollectionData;
+  preflight_jobs: CollectionData;
+  preflight_profiles: CollectionData;
 }
 
 const DEFAULT_DB_DATA: DatabaseData = {
@@ -40,6 +42,8 @@ const DEFAULT_DB_DATA: DatabaseData = {
   org_templates: {},
   audit_logs: {},
   password_resets: {},
+  preflight_jobs: {},
+  preflight_profiles: {},
 };
 
 export class EmbeddedDatabase {

@@ -123,6 +123,15 @@ export const Navbar: React.FC<NavbarProps> = ({ currentBookTitle, onRefreshProje
               All Books
             </Link>
 
+            <Link
+              href="/preflight"
+              id="navbar-preflight-link"
+              className="text-xs font-medium text-slate-600 hover:text-rose-600 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-100 flex items-center space-x-1"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-rose-500" />
+              <span>Preflight</span>
+            </Link>
+
             {/* User Account Controls */}
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">

@@ -253,3 +253,4 @@ export class AssetStorageService {
 }
 
 export const assetStorage = new AssetStorageService();
+export const assetStorageService = assetStorage;

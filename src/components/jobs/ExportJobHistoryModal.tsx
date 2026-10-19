@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { ExportJob } from '@/types/jobs';
 import { jobQueue } from '@/services/jobs/jobQueueService';
 import { bookRepository } from '@/services/storage/bookRepository';
@@ -16,6 +17,7 @@ import {
   BookOpen,
   Layers,
   FileCheck,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface ExportJobHistoryModalProps {
@@ -31,6 +33,7 @@ export const ExportJobHistoryModal: React.FC<ExportJobHistoryModalProps> = ({
   projectTitle,
   onClose,
 }) => {
+  const router = useRouter();
   const [jobs, setJobs] = useState<ExportJob[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -191,20 +194,35 @@ export const ExportJobHistoryModal: React.FC<ExportJobHistoryModalProps> = ({
 
                     {/* Download or Error Banner */}
                     {job.status === 'completed' && job.signedDownloadUrl && (
-                      <div className="flex items-center justify-between pt-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                         <span className="text-[11px] text-slate-500">
                           File Size: {job.fileSizeBytes ? `${Math.round(job.fileSizeBytes / 1024)} KB` : 'Ready'}
                         </span>
-                        <a
-                          href={job.signedDownloadUrl}
-                          download={job.downloadFilename || `${job.format}-export`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Download Export</span>
-                        </a>
+                        <div className="flex items-center space-x-2">
+                          {job.format === 'pdf' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onClose();
+                                router.push('/preflight');
+                              }}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-xs font-semibold transition-colors"
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Inspect in Preflight</span>
+                            </button>
+                          )}
+                          <a
+                            href={job.signedDownloadUrl}
+                            download={job.downloadFilename || `${job.format}-export`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Download Export</span>
+                          </a>
+                        </div>
                       </div>
                     )}
 

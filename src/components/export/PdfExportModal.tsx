@@ -1,8 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { BookProject, BookTemplate, PagePreviewData, PdfExportOptions } from '@/types/book';
 import { generatePrintPdf, sanitizePdfFilename } from '@/services/pdf/pdfExportService';
+import { preflightJobRepository } from '@/services/preflight/preflightJobRepository';
+import { bookRepository } from '@/services/storage/bookRepository';
 import {
   X,
   Download,
@@ -13,6 +16,7 @@ import {
   Crop,
   Layers,
   Loader2,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface PdfExportModalProps {
@@ -28,6 +32,7 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   pages,
   onClose,
 }) => {
+  const router = useRouter();
   const [includeBleed, setIncludeBleed] = useState<boolean>(project.exportOptions?.includeBleed ?? false);
   const [includeCropMarks, setIncludeCropMarks] = useState<boolean>(
     project.exportOptions?.includeCropMarks ?? false
@@ -37,6 +42,8 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
   const [progressStatus, setProgressStatus] = useState<string>('');
   const [exportError, setExportError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState<boolean>(false);
+  const [exportedPdfBytes, setExportedPdfBytes] = useState<Uint8Array | null>(null);
+  const [isHandoffRunning, setIsHandoffRunning] = useState<boolean>(false);
 
   const filename = sanitizePdfFilename(project.title);
 
@@ -61,6 +68,10 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
       setProgressStatus('Finalizing PDF stream and triggering download...');
       setProgressPercent(100);
 
+      const arrayBuf = doc.output('arraybuffer');
+      const u8 = new Uint8Array(arrayBuf);
+      setExportedPdfBytes(u8);
+
       // Trigger client-side file download
       doc.save(filename);
       setIsComplete(true);
@@ -69,6 +80,38 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
       setExportError(err.message || 'An unexpected error occurred during PDF compilation.');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleInspectInPreflight = async () => {
+    if (!exportedPdfBytes) return;
+    setIsHandoffRunning(true);
+    try {
+      const activeUser = bookRepository.getActiveUser();
+      const user = activeUser
+        ? {
+            userId: activeUser.userId,
+            displayName: activeUser.displayName,
+            email: activeUser.userEmail,
+          }
+        : {
+            userId: 'guest-publisher',
+            displayName: 'Guest Publisher',
+            email: 'publisher@ats.local',
+          };
+
+      const job = await preflightJobRepository.createJob(
+        exportedPdfBytes,
+        filename,
+        'ats-cmyk-pdfx4',
+        user
+      );
+
+      onClose();
+      router.push(`/preflight/${job.id}`);
+    } catch (err) {
+      console.error('Failed to handoff PDF to preflight:', err);
+      setIsHandoffRunning(false);
     }
   };
 
@@ -240,6 +283,19 @@ export const PdfExportModal: React.FC<PdfExportModalProps> = ({
           >
             {isComplete ? 'Close' : 'Cancel'}
           </button>
+
+          {isComplete && (
+            <button
+              type="button"
+              id="handoff-to-preflight-btn"
+              onClick={handleInspectInPreflight}
+              disabled={isHandoffRunning}
+              className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm transition-colors disabled:opacity-50"
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>{isHandoffRunning ? 'Inspecting in Preflight...' : 'Inspect in ATS Preflight'}</span>
+            </button>
+          )}
 
           {!isComplete && (
             <button
