@@ -33,10 +33,10 @@ export const ProductsSection: React.FC = () => {
           </div>
           <h2 className="tracking-tight">
             <span className="block font-palagio text-3xl sm:text-5xl md:text-6xl font-bold text-[#f1f3f7] leading-tight">
-              Engineered for Precision.
+              Professional
             </span>
             <span className="block font-sans text-xl sm:text-2xl md:text-3xl font-black text-rose-500 mt-2 leading-tight">
-              Complete Print &amp; Publishing Ecosystem.
+              Printing &amp; Publishing Solutions
             </span>
           </h2>
           <p className="text-neutral-300 text-base sm:text-lg leading-relaxed font-normal">
