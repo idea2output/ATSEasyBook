@@ -221,16 +221,16 @@ export const PlatformHeader: React.FC<PlatformHeaderProps> = ({ currentModule })
 
           {/* RIGHT: Credits, Notifications, Org Badge, User Menu */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* Credits Balance Display (Marked Coming Soon / Beta) */}
+            {/* Credits Balance Display (Clarified as Demo Credits / Preview) */}
             <div
               id="platform-credits-pill"
-              title="Platform Usage Credits (Billing & Charging in Preview / Beta)"
+              title="Billing and credit deduction are not active yet."
               className="hidden md:flex items-center space-x-2 px-3 py-1 bg-amber-500/10 border border-amber-500/25 rounded-full text-xs font-mono"
             >
               <Coins className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-bold text-amber-300">1,000 Credits</span>
+              <span className="font-bold text-amber-300">1,000 Demo Credits</span>
               <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 text-[9px] font-bold uppercase tracking-wider">
-                Coming Soon
+                Credits Preview
               </span>
             </div>
 

@@ -29,7 +29,10 @@ export async function GET(req: NextRequest) {
         },
         credits: {
           balance: 1000,
-          status: 'coming-soon',
+          status: 'demo-preview',
+          isDemo: true,
+          label: '1,000 Demo Credits',
+          notice: 'Billing and credit deduction are not active yet.',
         },
       });
     }

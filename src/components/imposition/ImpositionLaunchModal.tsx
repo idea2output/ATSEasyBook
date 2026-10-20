@@ -72,31 +72,36 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
     setIsEditingUrl(false);
   };
 
-  const handleLaunch = () => {
+  const handleLaunch = async () => {
     if (!config.url) return;
-    let targetUrl = config.url;
+
+    // For standard same-platform integration to /Impose/
+    const isSamePlatform =
+      config.url.includes('/Impose') ||
+      config.url.includes('/impose') ||
+      config.url.startsWith('/') ||
+      (typeof window !== 'undefined' && config.url.includes(window.location.host));
 
     if (handoffPayload) {
-      const currentUser = authService.getCurrentUserSync() || {
-        id: 'usr-default',
-        email: 'operator@atstech.com',
-        displayName: 'Prepress Operator',
-        role: 'editor',
-        organizationName: 'ATS Default Org',
-        preferredColorProfile: 'FOGRA39',
-        preferredLanguage: 'en',
-        timezone: 'UTC',
-        isVerified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const record = handoffRepository.createHandoff(handoffPayload, currentUser);
-      const sep = targetUrl.includes('?') ? '&' : '?';
-      targetUrl = `${targetUrl}${sep}handoffId=${encodeURIComponent(record.id)}`;
+      try {
+        const res = await fetch('/api/handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ payload: handoffPayload }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          console.warn('Server handoff creation error:', data);
+        }
+      } catch (err) {
+        console.warn('Network error setting server-side handoff cookie:', err);
+      }
     }
 
-    // Launch standalone application in a new browser tab without iframe embedding
-    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    // Launch standalone application in a new browser tab with strictly clean URL (zero tokens in URL)
+    const cleanTargetUrl = isSamePlatform ? '/Impose/' : config.url;
+    window.open(cleanTargetUrl, '_blank', 'noopener,noreferrer');
+    onClose();
   };
 
   return (
@@ -278,9 +283,9 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
               <span>Independent Application Boundary</span>
             </div>
             <p className="text-neutral-300 leading-relaxed text-[11px]">
-              ATS Imposition operates as an autonomous, high-speed vector prepress engine. Session authentication is
-              governed at the network or dedicated subdomain gateway (e.g. <code className="text-rose-300">imposition.atstech.com</code>).
-              To preserve prepress integrity, no user credentials, passwords, or private access tokens are transmitted through URL parameters.
+              ATS Impose operates as an autonomous, high-speed vector prepress engine. Session authentication and
+              job handoffs are governed server-side via short-lived, single-use HttpOnly cookies scoped to <code className="text-rose-300">/Impose/</code>.
+              To preserve prepress integrity, no tokens, passwords, signed URLs, or payloads are ever placed in query strings or URL fragments.
             </p>
           </div>
         </div>

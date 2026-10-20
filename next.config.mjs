@@ -1,6 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  async redirects() {
+    return [
+      {
+        source: '/imposition',
+        destination: '/Impose/',
+        permanent: true,
+      },
+      {
+        source: '/imposition/:path*',
+        destination: '/Impose/:path*',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     const impositionTarget =
       process.env.IMPOSITION_INTERNAL_URL ||
