@@ -70,8 +70,13 @@ export default function PublisherDashboardPage() {
         {/* Header section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Publisher Project Library
+            <h1 className="tracking-tight flex items-baseline space-x-2">
+              <span className="font-palagio text-2xl sm:text-3xl font-bold text-slate-900">
+                Publisher Project Library
+              </span>
+              <span className="font-sans text-xs sm:text-sm font-bold uppercase tracking-wider text-rose-600 font-mono">
+                • Production Hub
+              </span>
             </h1>
             <p className="mt-1 text-sm text-slate-600">
               Manage your manuscripts, team reviews, version histories, and certified print-ready exports.

@@ -31,10 +31,15 @@ export const ProductsSection: React.FC = () => {
             <span className="w-2 h-0.5 bg-rose-500" />
             <span>Featured Core Products</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-            Engineered for Precision Print &amp; Publishing
+          <h2 className="tracking-tight">
+            <span className="block font-palagio text-3xl sm:text-5xl md:text-6xl font-bold text-[#f1f3f7] leading-tight">
+              Engineered for Precision.
+            </span>
+            <span className="block font-sans text-xl sm:text-2xl md:text-3xl font-black text-rose-500 mt-2 leading-tight">
+              Complete Print &amp; Publishing Ecosystem.
+            </span>
           </h2>
-          <p className="text-neutral-400 text-base sm:text-lg leading-relaxed">
+          <p className="text-neutral-300 text-base sm:text-lg leading-relaxed font-normal">
             Three foundational platforms powering the complete cycle from raw manuscript authoring and certified prepress repair to commercial offset press impose layouts.
           </p>
         </div>
@@ -55,10 +60,10 @@ export const ProductsSection: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-4xl font-black text-white">
+                <h3 className="font-palagio text-2xl sm:text-3xl font-bold text-white">
                   ATS EasyBook
                 </h3>
-                <p className="text-sm font-semibold text-rose-500 font-mono mt-1 uppercase tracking-wider">
+                <p className="text-xs sm:text-sm font-bold text-rose-500 font-sans mt-1 uppercase tracking-wider">
                   Automated Book Layout &amp; Prepress Studio
                 </p>
               </div>
@@ -139,10 +144,10 @@ export const ProductsSection: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-4xl font-black text-white">
+                <h3 className="font-palagio text-2xl sm:text-3xl font-bold text-white">
                   ATS Preflight
                 </h3>
-                <p className="text-sm font-semibold text-rose-500 font-mono mt-1 uppercase tracking-wider">
+                <p className="text-xs sm:text-sm font-bold text-rose-500 font-sans mt-1 uppercase tracking-wider">
                   PDF/X &amp; ISO 12647-2 Quality Inspection &amp; Repair
                 </p>
               </div>
@@ -221,11 +226,11 @@ export const ProductsSection: React.FC = () => {
               </div>
 
               <div>
-                <h3 className="text-2xl sm:text-4xl font-black text-white">
+                <h3 className="font-palagio text-2xl sm:text-3xl font-bold text-white">
                   ATS Impose
                 </h3>
-                <p className="text-sm font-semibold text-rose-500 font-mono mt-1 uppercase tracking-wider">
-                  Commercial Press Sheet &amp; Signature Layouts (MyDraw)
+                <p className="text-xs sm:text-sm font-bold text-rose-500 font-sans mt-1 uppercase tracking-wider">
+                  Commercial Press Sheet &amp; Signature Layouts
                 </p>
               </div>
 

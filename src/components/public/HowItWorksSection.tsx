@@ -60,10 +60,15 @@ export const HowItWorksSection: React.FC = () => {
             <span className="w-2 h-0.5 bg-rose-500" />
             <span>Production Workflow Pipeline</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-            How ATS Tech Works: From Concept to Press
+          <h2 className="tracking-tight">
+            <span className="block font-palagio text-3xl sm:text-5xl font-bold text-[#f1f3f7] leading-tight">
+              How ATS Tech Works.
+            </span>
+            <span className="block font-sans text-xl sm:text-2xl md:text-3xl font-black text-rose-500 mt-2 leading-tight">
+              From Raw Manuscript to Commercial Press.
+            </span>
           </h2>
-          <p className="text-neutral-400 text-base sm:text-lg leading-relaxed">
+          <p className="text-neutral-300 text-base sm:text-lg leading-relaxed font-normal">
             Eliminate fragmented tools and costly manual prepress handoffs with a continuous, verified publishing pipeline.
           </p>
         </div>

@@ -95,12 +95,17 @@ export const PreflightDashboard: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-neutral-800">
         <div className="space-y-1">
-          <div className="flex items-center space-x-2 text-rose-500 text-xs font-bold uppercase tracking-wider">
+          <div className="flex items-center space-x-2 text-rose-500 text-xs font-bold uppercase tracking-wider font-mono">
             <ShieldCheck className="w-4 h-4" />
             <span>Prepress Quality Assurance</span>
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight">
-            ATS PDF Preflight & Repair Workspace
+          <h1 className="tracking-tight flex items-baseline space-x-2.5">
+            <span className="font-palagio text-2xl sm:text-4xl font-bold text-white">
+              ATS PDF Preflight
+            </span>
+            <span className="font-sans text-sm sm:text-base font-bold text-rose-500 uppercase tracking-wider font-mono">
+              &amp; Repair Workspace
+            </span>
           </h1>
           <p className="text-xs sm:text-sm text-neutral-400">
             Deep PDF inspection for color separations, font embedding, page boxes, bleed, and print certification.

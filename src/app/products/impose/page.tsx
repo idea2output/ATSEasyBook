@@ -34,14 +34,18 @@ export default function ImposeProductMarketingPage() {
         <section className="relative pt-20 pb-24 border-b border-neutral-900 overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="max-w-3xl space-y-6">
-              <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-600/10 border border-rose-600/30 text-rose-400 text-xs font-bold uppercase tracking-widest">
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-rose-600/10 border border-rose-600/30 text-rose-400 text-xs font-bold uppercase tracking-widest font-mono">
                 <Layers className="w-4 h-4" />
                 <span>Commercial Prepress Impose Studio</span>
               </div>
 
-              <h1 className="text-4xl sm:text-6xl font-black text-white tracking-tight uppercase leading-none">
-                Automated Press Sheet &amp; <br />
-                <span className="text-rose-600">Signature Layouts.</span>
+              <h1 className="tracking-tight">
+                <span className="block font-palagio text-4xl sm:text-6xl font-bold text-[#f1f3f7] leading-tight">
+                  Automated Press Sheets.
+                </span>
+                <span className="block font-sans text-2xl sm:text-3xl md:text-4xl font-black text-rose-500 mt-2 leading-tight">
+                  Signature Layouts &amp; Creep Math.
+                </span>
               </h1>
 
               <p className="text-lg text-neutral-300 leading-relaxed max-w-2xl">

@@ -23,10 +23,15 @@ export const AudienceSection: React.FC = () => {
             <span className="w-2 h-0.5 bg-rose-500" />
             <span>Built for the Full Production Spectrum</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
-            One Platform. Two Specialized Workflows.
+          <h2 className="tracking-tight">
+            <span className="block font-palagio text-3xl sm:text-5xl font-bold text-[#f1f3f7] leading-tight">
+              One Unified Platform.
+            </span>
+            <span className="block font-sans text-xl sm:text-2xl md:text-3xl font-black text-rose-500 mt-2 leading-tight">
+              Two Specialized Production Workflows.
+            </span>
           </h2>
-          <p className="text-neutral-400 text-base sm:text-lg leading-relaxed">
+          <p className="text-neutral-300 text-base sm:text-lg leading-relaxed font-normal">
             Whether you are self-publishing a single novel or managing high-volume offset press runs, ATS Tech delivers dedicated tools tailored to your exact publishing stage.
           </p>
         </div>

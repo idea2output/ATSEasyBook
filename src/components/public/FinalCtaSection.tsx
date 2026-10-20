@@ -14,11 +14,16 @@ export const FinalCtaSection: React.FC = () => {
             <span>Get Started with ATS Tech</span>
           </div>
 
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
-            Create Your First Book.
+          <h2 className="tracking-tight">
+            <span className="block font-palagio text-3xl sm:text-5xl lg:text-6xl font-bold text-[#f1f3f7] leading-tight">
+              Create Your Next Book.
+            </span>
+            <span className="block font-sans text-xl sm:text-2xl md:text-3xl font-black text-rose-500 mt-2 leading-tight">
+              Publish &amp; Print with Total Confidence.
+            </span>
           </h2>
 
-          <p className="text-base sm:text-xl text-neutral-400 max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base sm:text-lg text-neutral-300 max-w-2xl mx-auto leading-relaxed font-normal">
             Join authors, independent publishers, and commercial print production teams formatting manuscripts and producing print-certified files with total confidence.
           </p>
         </div>

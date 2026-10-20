@@ -32,8 +32,13 @@ export const ProductDemoSection: React.FC = () => {
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e]" />
               <span>Interactive Architecture Showcase</span>
             </div>
-            <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-white">
-              Experience the Precision Engine
+            <h2 className="tracking-tight">
+              <span className="block font-palagio text-3xl sm:text-5xl font-bold text-[#f1f3f7] leading-tight">
+                Experience the Precision Engine.
+              </span>
+              <span className="block font-sans text-xl sm:text-2xl md:text-3xl font-black text-rose-500 mt-2 leading-tight">
+                Live Interactive Architecture.
+              </span>
             </h2>
             <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
               Fictional editorial demonstration illustrating accurate text flow, 2-column balancing, and 16-page press signature impose layouts.
