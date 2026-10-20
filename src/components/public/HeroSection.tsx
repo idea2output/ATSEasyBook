@@ -26,7 +26,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   isCreatingBook = false,
 }) => {
   const router = useRouter();
-  const [activeVisualTab, setActiveVisualTab] = useState<'transformation' | 'imposition'>('transformation');
   const [fontPairing, setFontPairing] = useState<'palagio-sans' | 'palagio-manrope' | 'tenor-manrope' | 'syne-inter' | 'playfair-manrope'>('palagio-sans');
 
   const getLine1FontClass = () => {
@@ -213,223 +212,91 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
       {/* 2. Dedicated Interactive Product Demonstration (Below the Full-Screen Hero Viewport) */}
       <div id="demo-interactive" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 space-y-6 border-t border-neutral-900 scroll-mt-20 relative z-10">
-          {/* Demonstration Mode Switcher */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-neutral-800 pb-3">
-            <div className="flex items-center space-x-2">
-              <span className="text-xs font-mono uppercase tracking-wider text-neutral-400 font-bold">
-                Interactive Product Demonstration:
-              </span>
-            </div>
-
-            <div className="flex p-1 bg-neutral-900 rounded-lg border border-neutral-800 text-xs font-bold">
-              <button
-                type="button"
-                id="tab-easybook"
-                onClick={() => setActiveVisualTab('transformation')}
-                className={`px-4 py-2 rounded-md transition-all flex items-center space-x-2 ${
-                  activeVisualTab === 'transformation'
-                    ? 'bg-rose-600 text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5" />
-                <span>Manuscript to Book Spread</span>
-              </button>
-              <button
-                type="button"
-                id="tab-imposition"
-                onClick={() => setActiveVisualTab('imposition')}
-                className={`px-4 py-2 rounded-md transition-all flex items-center space-x-2 ${
-                  activeVisualTab === 'imposition'
-                    ? 'bg-rose-600 text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Press Signature Impose</span>
-              </button>
-            </div>
+        {/* Showcase Header Bar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-neutral-800/80 pb-4">
+          <div className="flex items-center space-x-3">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
+            </span>
+            <span className="text-xs font-mono uppercase tracking-wider text-neutral-300 font-bold">
+              ATS Tech • Live Platform Demonstration
+            </span>
           </div>
 
-          {/* Showcase Display Container */}
-          <div className="bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl">
-            {activeVisualTab === 'transformation' ? (
-              /* TAB 1: Real Manuscript-to-Page Transformation */
-              <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-neutral-800">
-                {/* Left Side: Source Manuscript (Fictional Data) */}
-                <div className="lg:col-span-5 p-6 sm:p-8 bg-[#0a0a0f] space-y-4 flex flex-col justify-between">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs font-mono text-neutral-400 border-b border-neutral-800 pb-2">
-                      <span className="flex items-center space-x-2">
-                        <FileText className="w-3.5 h-3.5 text-rose-500" />
-                        <span className="text-neutral-200 font-bold">manuscript.md</span>
-                      </span>
-                      <span className="text-[10px] uppercase text-neutral-500">Source Manuscript</span>
-                    </div>
-
-                    <div className="font-mono text-xs text-neutral-300 space-y-3 leading-relaxed bg-black/60 p-4 rounded-lg border border-neutral-850">
-                      <p className="text-rose-400 font-bold"># The Arctic Voyage</p>
-                      <p className="text-neutral-400">## Chapter II: Beyond the 78th Parallel</p>
-                      <p className="text-neutral-300">
-                        The pack ice groaned beneath the hull as the steamer entered uncharted waters. Every sound was magnified in the crystalline stillness of the Arctic morning.
-                      </p>
-                      <p className="text-neutral-400">
-                        Navigation instruments registered steady drift southward, yet Captain Vance held course toward the meridian.
-                      </p>
-                      <p className="text-amber-400/90 text-[11px]">
-                        ![Admiralty Cove Chart](images/polar-soundings.png)
-                      </p>
-                      <p className="text-neutral-400 text-[11px]">
-                        *Figure 2: Sounding logs verified against tidal chart data.*
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-neutral-400 font-mono flex items-center justify-between pt-2">
-                    <span>Structured Markdown</span>
-                    <span className="text-rose-500 font-semibold">Live Reflow Active →</span>
-                  </div>
-                </div>
-
-                {/* Right Side: Faithful Rendered Book Spread */}
-                <div className="lg:col-span-7 p-6 sm:p-8 bg-neutral-900/60 flex flex-col justify-between space-y-6">
-                  <div className="flex items-center justify-between text-xs font-mono text-neutral-400 border-b border-neutral-800 pb-2">
-                    <span className="font-bold text-neutral-200">ATS EasyBook Rendered Spread (6 × 9 in)</span>
-                    <span className="text-emerald-400 font-semibold">✓ Certified FOGRA39 CMYK</span>
-                  </div>
-
-                  {/* Two-Page Spread Mockup with Realistic Print Styling */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Verso Page (Left) */}
-                    <div className="bg-white text-neutral-900 rounded-sm shadow-md p-5 aspect-[6/9] flex flex-col justify-between text-[11px] leading-relaxed relative overflow-hidden">
-                      <div className="text-[9px] uppercase tracking-widest text-neutral-500 border-b border-neutral-200 pb-1 flex justify-between font-mono">
-                        <span>The Polar Expedition</span>
-                        <span className="font-bold text-neutral-900">14</span>
-                      </div>
-
-                      <div className="space-y-2 flex-1 pt-2.5">
-                        <h4 className="text-xs font-bold text-neutral-900 tracking-tight">
-                          Chapter II — Beyond the 78th Parallel
-                        </h4>
-                        <p className="font-serif text-[10.5px] leading-snug text-neutral-800 text-justify">
-                          <span className="float-left text-2xl font-bold leading-none pr-1.5 pt-0.5 text-rose-600 font-sans">T</span>
-                          he pack ice groaned beneath the hull as the steamer entered uncharted waters. Every sound was magnified in the crystalline stillness of the Arctic morning. Navigation instruments registered steady drift southward, yet Captain Vance held course toward the meridian.
-                        </p>
-                        <p className="font-serif text-[10.5px] leading-snug text-neutral-700 text-justify">
-                          The crew worked in four-hour watches, clearing salt rime from the rigging while coal bunkers were measured against the calculated voyage duration.
-                        </p>
-                      </div>
-
-                      <div className="text-[8.5px] text-neutral-400 border-t border-neutral-100 pt-1 font-mono text-center">
-                        Balanced Column Fill • 0 Dropped Words
-                      </div>
-                    </div>
-
-                    {/* Recto Page (Right) */}
-                    <div className="bg-white text-neutral-900 rounded-sm shadow-md p-5 aspect-[6/9] flex flex-col justify-between text-[11px] leading-relaxed relative overflow-hidden">
-                      <div className="text-[9px] uppercase tracking-widest text-neutral-500 border-b border-neutral-200 pb-1 flex justify-between font-mono">
-                        <span className="font-bold text-neutral-900">15</span>
-                        <span>Atmospheric Observations</span>
-                      </div>
-
-                      <div className="space-y-2 flex-1 pt-2.5">
-                        <p className="font-serif text-[10.5px] leading-snug text-neutral-800 text-justify">
-                          Barometric pressure dropped steadily toward nightfall, foretelling an approaching gale. Observation logs were sealed in tin cases and secured to the chart-table bulkheads.
-                        </p>
-                        <div className="p-2 bg-neutral-100 border border-neutral-300 rounded text-[9px] font-mono text-neutral-700">
-                          Figure 2: Sounding logs verified against tidal chart data.
-                        </div>
-                        <p className="font-serif text-[10.5px] leading-snug text-neutral-700 text-justify">
-                          By midnight, sea smoke rose in dense plumes from fissures in the floe, obscuring the horizon.
-                        </p>
-                      </div>
-
-                      <div className="text-[8.5px] text-neutral-400 border-t border-neutral-100 pt-1 font-mono text-center">
-                        Pure 100K Vector Black • Overprint Active
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between text-xs text-neutral-400 font-mono pt-1">
-                    <span>Trim: 6.00 × 9.00 in</span>
-                    <span>Bleed: 0.125 in (9pt)</span>
-                    <span className="text-neutral-300">Format: PDF/X-4</span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* TAB 2: Press Signature Imposition Demonstration */
-              <div className="p-6 sm:p-8 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800 pb-3">
-                  <div>
-                    <h3 className="text-base font-bold text-white">
-                      Commercial 8-Up Press Signature Layout
-                    </h3>
-                    <p className="text-xs text-neutral-400">
-                      Standard head-to-head offset sheet arrangement with automated creep compensation.
-                    </p>
-                  </div>
-                  <span className="text-xs font-mono text-rose-500 font-bold">
-                    Sheet Size: 28 × 40 in • Gripper: 0.5 in
-                  </span>
-                </div>
-
-                {/* Imposition Sheet Grid */}
-                <div className="grid grid-cols-4 gap-3 p-4 bg-black rounded-xl border border-neutral-800">
-                  {/* Top Row: Head-to-Head (Rotated for folding) */}
-                  <div className="bg-neutral-900 p-3 rounded border border-neutral-800 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-neutral-500">Page 5 [Head]</span>
-                    <span className="text-xs font-bold text-neutral-300">Editorial Text</span>
-                    <span className="text-[10px] font-mono text-rose-400">Creep +0.012 in</span>
-                  </div>
-                  <div className="bg-neutral-900 p-3 rounded border border-neutral-800 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-neutral-500">Page 12 [Head]</span>
-                    <span className="text-xs font-bold text-neutral-300">Plate Graphic</span>
-                    <span className="text-[10px] font-mono text-rose-400">Creep +0.012 in</span>
-                  </div>
-                  <div className="bg-neutral-900 p-3 rounded border border-neutral-800 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-neutral-500">Page 9 [Head]</span>
-                    <span className="text-xs font-bold text-neutral-300">Editorial Text</span>
-                    <span className="text-[10px] font-mono text-rose-400">Creep +0.012 in</span>
-                  </div>
-                  <div className="bg-neutral-900 p-3 rounded border border-neutral-800 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-neutral-500">Page 8 [Head]</span>
-                    <span className="text-xs font-bold text-neutral-300">Editorial Text</span>
-                    <span className="text-[10px] font-mono text-rose-400">Creep +0.012 in</span>
-                  </div>
-
-                  {/* Bottom Row: Foot-to-Foot */}
-                  <div className="bg-neutral-900 p-3 rounded border border-neutral-800 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-rose-400">Creep +0.012 in</span>
-                    <span className="text-xs font-bold text-neutral-300">Editorial Text</span>
-                    <span className="text-[10px] font-mono text-neutral-500">Page 4 [Foot]</span>
-                  </div>
-                  <div className="bg-neutral-900 p-3 rounded border border-neutral-800 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-rose-400">Creep +0.012 in</span>
-                    <span className="text-xs font-bold text-neutral-300">Editorial Text</span>
-                    <span className="text-[10px] font-mono text-neutral-500">Page 13 [Foot]</span>
-                  </div>
-                  <div className="bg-neutral-900 p-3 rounded border border-neutral-800 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-rose-400">Creep +0.012 in</span>
-                    <span className="text-xs font-bold text-neutral-300">Editorial Text</span>
-                    <span className="text-[10px] font-mono text-neutral-500">Page 16 [Foot]</span>
-                  </div>
-                  <div className="bg-neutral-900 p-3 rounded border border-rose-600/50 text-center flex flex-col justify-between h-32">
-                    <span className="text-[10px] font-mono text-rose-400 font-bold">Cover Signature</span>
-                    <span className="text-xs font-bold text-white">Title Page 1</span>
-                    <span className="text-[10px] font-mono text-neutral-500">Page 1 [Foot]</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between text-xs text-neutral-400 font-mono pt-1">
-                  <span>Folding Scheme: 16-Page Right Angle Fold</span>
-                  <span>Binding: Perfect Bound &amp; Saddle Stitch</span>
-                  <span className="text-rose-500 font-bold">CTP Bridge Ready</span>
-                </div>
-              </div>
-            )}
+          <div className="flex items-center space-x-3 text-xs font-mono text-neutral-400">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-neutral-900 border border-neutral-800 text-rose-400">
+              HD Video Walkthrough
+            </span>
+            <span className="hidden sm:inline text-neutral-600">•</span>
+            <span className="hidden sm:inline text-neutral-400">Full Production Workflow</span>
           </div>
         </div>
+
+        {/* Video Frame Container */}
+        <div className="bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl relative group">
+          {/* Studio Monitor Top Bar */}
+          <div className="flex items-center justify-between px-4 py-2.5 bg-neutral-900/90 border-b border-neutral-800 text-xs font-mono select-none">
+            <div className="flex items-center space-x-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500/80 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80 inline-block" />
+              <span className="ml-2 text-neutral-400 text-[11px] font-medium hidden sm:inline">
+                ATS EasyBook &amp; Impose Studio — Workflow Overview
+              </span>
+            </div>
+            <div className="flex items-center space-x-2 text-[11px] text-neutral-500">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span>
+              <span className="text-neutral-400 font-bold">DEMO PLAYER</span>
+            </div>
+          </div>
+
+          {/* Video Player Box with Dark Unified Tint Overlay */}
+          <div className="relative aspect-video w-full bg-neutral-950 flex items-center justify-center overflow-hidden">
+            <video
+              src="/videos/ats-product-demo.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+              className="w-full h-full object-contain relative z-0 transition-all duration-300"
+              style={{
+                filter: 'brightness(0.90) contrast(1.05)',
+              }}
+            />
+
+            {/* Dark Color Tint Overlay for Unified Theme (Passes pointer events to video controls) */}
+            <div
+              className="absolute inset-0 pointer-events-none mix-blend-multiply bg-neutral-950/20 z-10 transition-opacity duration-300"
+              aria-hidden="true"
+            />
+
+            {/* Subtle Vignette & Frame Shadow to smoothly blend edges with the ATS dark aesthetic */}
+            <div
+              className="absolute inset-0 pointer-events-none shadow-[inset_0_0_50px_rgba(0,0,0,0.5)] z-10"
+              aria-hidden="true"
+            />
+          </div>
+
+          {/* Bottom Video Meta Bar */}
+          <div className="px-5 py-3 bg-neutral-900/60 border-t border-neutral-800 flex flex-wrap items-center justify-between text-xs text-neutral-400 font-mono gap-2">
+            <div className="flex items-center space-x-4">
+              <span className="text-rose-400 font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                ATS Prepress Engine
+              </span>
+              <span className="hidden md:inline text-neutral-500">•</span>
+              <span className="hidden md:inline">Automatic Reflow &amp; Impose Signatures</span>
+            </div>
+            <div className="flex items-center space-x-3 text-neutral-400 text-[11px]">
+              <span>Resolution: 1080p</span>
+              <span className="text-neutral-600">|</span>
+              <span className="text-emerald-400 font-medium">Auto-looping Enabled</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   );
 };
