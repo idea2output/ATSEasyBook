@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   BookProject,
   BookImage,
@@ -59,6 +59,9 @@ import {
   History,
   Package,
   Lock,
+  Menu,
+  ChevronDown,
+  X,
 } from 'lucide-react';
 
 export type EditorTabType =
@@ -131,6 +134,30 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
   const [pendingReflowTemplate, setPendingReflowTemplate] = useState<BookTemplate | null>(null);
   const [reflowDifferences, setReflowDifferences] = useState<string[]>([]);
   const [isEpubModalOpen, setIsEpubModalOpen] = useState<boolean>(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState<boolean>(false);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(event.target as Node)) {
+        setIsToolsMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsToolsMenuOpen(false);
+      }
+    };
+
+    if (isToolsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isToolsMenuOpen]);
 
   const isExpert = book.editorMode === 'expert';
   const isViewer = book.currentUserRole === 'viewer';
@@ -263,6 +290,54 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
 
   const docLang = book.languageSettings?.language || 'en';
   const docDir = book.languageSettings?.direction || 'ltr';
+
+  const getActiveTabInfo = (tab: EditorTabType) => {
+    switch (tab) {
+      case 'blocks':
+        return { label: `Blocks (${blocksCount})`, icon: <ListTree className="w-3.5 h-3.5 text-indigo-600" /> };
+      case 'language':
+        return { label: `Language (${docLang.toUpperCase()} • ${docDir.toUpperCase()})`, icon: <Globe className="w-3.5 h-3.5 text-indigo-600" /> };
+      case 'hindi':
+        return { label: 'Hindi Publishing', icon: <Keyboard className="w-3.5 h-3.5 text-orange-600" /> };
+      case 'images':
+        return { label: `Images (${images.length})`, icon: <ImageIcon className="w-3.5 h-3.5 text-indigo-600" /> };
+      case 'typography':
+        return { label: 'Typography', icon: <Type className="w-3.5 h-3.5 text-indigo-600" /> };
+      case 'design':
+        return { label: 'Design', icon: <Palette className="w-3.5 h-3.5 text-purple-600" /> };
+      case 'fonts':
+        return { label: `Fonts (${book.customFonts?.length || 0})`, icon: <Type className="w-3.5 h-3.5 text-purple-600" /> };
+      case 'color':
+        return { label: 'Color (CMYK)', icon: <Printer className="w-3.5 h-3.5 text-purple-600" /> };
+      case 'preflight':
+        return {
+          label: 'Preflight',
+          icon: <FileCheck className="w-3.5 h-3.5 text-indigo-600" />,
+          badge: preflightSummary.errorsCount > 0 ? (
+            <span className="ml-1 px-1.5 py-0.2 bg-rose-100 text-rose-700 font-bold rounded-full text-[10px]">
+              {preflightSummary.errorsCount}
+            </span>
+          ) : preflightSummary.warningsCount > 0 ? (
+            <span className="ml-1 px-1.5 py-0.2 bg-amber-100 text-amber-800 font-bold rounded-full text-[10px]">
+              {preflightSummary.warningsCount}
+            </span>
+          ) : (
+            <span className="ml-1 px-1.5 py-0.2 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[10px]">
+              ✓
+            </span>
+          ),
+        };
+      case 'comments':
+        return { label: 'Comments', icon: <MessageSquare className="w-3.5 h-3.5 text-indigo-600" /> };
+      case 'versions':
+        return { label: 'Versions', icon: <History className="w-3.5 h-3.5 text-indigo-600" /> };
+      case 'print':
+        return { label: 'Print Specs', icon: <Package className="w-3.5 h-3.5 text-amber-600" /> };
+      case 'raw':
+      default:
+        return { label: 'Manuscript Editor', icon: <FileText className="w-3.5 h-3.5 text-indigo-600" /> };
+    }
+  };
 
   return (
     <div className="bg-white rounded-xl shadow-xs border border-slate-200 overflow-hidden flex flex-col h-full">
@@ -461,239 +536,390 @@ export const ManuscriptEditor: React.FC<ManuscriptEditorProps> = ({
         )}
       </div>
 
-      {/* Editor Tabs */}
-      <div className="px-4 border-b border-slate-200 bg-slate-50/30 flex items-center justify-between overflow-x-auto">
-        <div className="flex space-x-2 shrink-0" role="tablist" aria-label="Editor views">
+      {/* Editor Tabs - Manuscript Editor + Hamburger Menu */}
+      <div className="px-4 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
+        <div className="flex items-center space-x-2 shrink-0 py-1" role="tablist" aria-label="Editor views">
+          {/* 1. Permanent Primary Tab: Manuscript Editor */}
           <button
             type="button"
             role="tab"
+            id="tab-manuscript-editor"
             aria-selected={activeTab === 'raw'}
-            onClick={() => setActiveTab('raw')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+            onClick={() => {
+              setActiveTab('raw');
+              setIsToolsMenuOpen(false);
+            }}
+            className={`py-2 px-3 text-xs font-semibold rounded-md flex items-center space-x-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
               activeTab === 'raw'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'bg-white text-indigo-700 shadow-sm border border-slate-200/80 font-bold'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
-            <FileText className="w-3.5 h-3.5" />
+            <FileText className={`w-3.5 h-3.5 ${activeTab === 'raw' ? 'text-indigo-600' : 'text-slate-500'}`} />
             <span>Manuscript Editor</span>
           </button>
 
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'blocks'}
-            onClick={() => setActiveTab('blocks')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              activeTab === 'blocks'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <ListTree className="w-3.5 h-3.5" />
-            <span>Blocks ({blocksCount})</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            id="tab-language"
-            aria-selected={activeTab === 'language'}
-            onClick={() => setActiveTab('language')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              activeTab === 'language'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Language ({docLang.toUpperCase()} • {docDir.toUpperCase()})</span>
-          </button>
-
-          {(isExpert || docLang === 'hi' || book.hindiSettings) && (
-            <button
-              type="button"
-              role="tab"
-              id="tab-hindi"
-              aria-selected={activeTab === 'hindi'}
-              onClick={() => setActiveTab('hindi')}
-              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
-                activeTab === 'hindi'
-                  ? 'border-orange-600 text-orange-600 bg-white'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Keyboard className="w-3.5 h-3.5 text-orange-600" />
-              <span>Hindi Publishing</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'images'}
-            onClick={() => setActiveTab('images')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              activeTab === 'images'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Images ({images.length})</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'typography'}
-            onClick={() => setActiveTab('typography')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              activeTab === 'typography'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Type className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Typography</span>
-          </button>
-
-          {isExpert && (
-            <button
-              type="button"
-              role="tab"
-              id="tab-design"
-              aria-selected={activeTab === 'design'}
-              onClick={() => setActiveTab('design')}
-              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
-                activeTab === 'design'
-                  ? 'border-purple-600 text-purple-600 bg-white'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Palette className="w-3.5 h-3.5 text-purple-600" />
-              <span>Design</span>
-            </button>
-          )}
-
-          {isExpert && (
-            <button
-              type="button"
-              role="tab"
-              id="tab-fonts"
-              aria-selected={activeTab === 'fonts'}
-              onClick={() => setActiveTab('fonts')}
-              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
-                activeTab === 'fonts'
-                  ? 'border-purple-600 text-purple-600 bg-white'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Type className="w-3.5 h-3.5 text-purple-600" />
-              <span>Fonts ({book.customFonts?.length || 0})</span>
-            </button>
-          )}
-
-          {isExpert && (
-            <button
-              type="button"
-              role="tab"
-              id="tab-color"
-              aria-selected={activeTab === 'color'}
-              onClick={() => setActiveTab('color')}
-              className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
-                activeTab === 'color'
-                  ? 'border-purple-600 text-purple-600 bg-white'
-                  : 'border-transparent text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              <Printer className="w-3.5 h-3.5 text-purple-600" />
-              <span>Color (CMYK)</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            role="tab"
-            id="tab-preflight"
-            aria-selected={activeTab === 'preflight'}
-            onClick={() => setActiveTab('preflight')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              activeTab === 'preflight'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Preflight</span>
-            {preflightSummary.errorsCount > 0 ? (
-              <span className="ml-1 px-1.5 py-0.2 bg-rose-100 text-rose-700 font-bold rounded-full text-[10px]">
-                {preflightSummary.errorsCount}
+          {/* 2. Active Secondary Tool Breadcrumb Chip (When user chooses a tool from Hamburger menu) */}
+          {activeTab !== 'raw' && (
+            <div className="flex items-center space-x-1 pl-1">
+              <span className="text-slate-300 text-xs font-light">/</span>
+              <span className="py-1 px-2.5 text-xs font-semibold rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center space-x-1.5 shadow-xs">
+                {getActiveTabInfo(activeTab).icon}
+                <span>{getActiveTabInfo(activeTab).label}</span>
+                {getActiveTabInfo(activeTab).badge}
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('raw')}
+                  className="ml-1 p-0.5 hover:bg-indigo-200/70 rounded text-indigo-500 hover:text-indigo-900 transition-colors"
+                  title="Return to Manuscript Editor"
+                  aria-label="Close view and return to Manuscript Editor"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </span>
-            ) : preflightSummary.warningsCount > 0 ? (
-              <span className="ml-1 px-1.5 py-0.2 bg-amber-100 text-amber-800 font-bold rounded-full text-[10px]">
-                {preflightSummary.warningsCount}
-              </span>
-            ) : (
-              <span className="ml-1 px-1.5 py-0.2 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[10px]">
-                ✓
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            id="tab-comments"
-            aria-selected={activeTab === 'comments'}
-            onClick={() => setActiveTab('comments')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              activeTab === 'comments'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Comments</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            id="tab-versions"
-            aria-selected={activeTab === 'versions'}
-            onClick={() => setActiveTab('versions')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
-              activeTab === 'versions'
-                ? 'border-indigo-600 text-indigo-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <History className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Versions</span>
-          </button>
-
-          <button
-            type="button"
-            role="tab"
-            id="tab-print"
-            aria-selected={activeTab === 'print'}
-            onClick={() => setActiveTab('print')}
-            className={`py-2 px-3 text-xs font-semibold border-b-2 flex items-center space-x-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
-              activeTab === 'print'
-                ? 'border-amber-600 text-amber-600 bg-white'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Package className="w-3.5 h-3.5 text-amber-600" />
-            <span>Print Specs</span>
-          </button>
+            </div>
+          )}
         </div>
 
-        <div className="hidden lg:flex items-center space-x-3 text-[11px] text-slate-500 py-1 shrink-0">
-          <span>{wordsCount.toLocaleString()} words</span>
-          <span>•</span>
-          <span>{placements.length} {placements.length === 1 ? 'placement' : 'placements'}</span>
+        {/* Right Side: Hamburger Tools Menu & Stats */}
+        <div className="flex items-center space-x-3 py-1">
+          <div className="hidden sm:flex items-center space-x-2 text-[11px] text-slate-500 shrink-0">
+            <span>{wordsCount.toLocaleString()} words</span>
+            <span>•</span>
+            <span>{placements.length} {placements.length === 1 ? 'placement' : 'placements'}</span>
+          </div>
+
+          {/* Hamburger Menu Dropdown */}
+          <div className="relative" ref={toolsMenuRef}>
+            <button
+              type="button"
+              id="btn-tools-hamburger-menu"
+              onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+              className={`py-1.5 px-3 text-xs font-medium rounded-md border flex items-center space-x-1.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${
+                isToolsMenuOpen || activeTab !== 'raw'
+                  ? 'bg-slate-100 border-slate-300 text-slate-900 shadow-xs'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+              }`}
+              aria-expanded={isToolsMenuOpen}
+              aria-haspopup="true"
+              title="Open more tools &amp; views"
+            >
+              <Menu className="w-3.5 h-3.5 text-slate-600" />
+              <span className="font-semibold text-xs">Tools</span>
+              {preflightSummary.errorsCount > 0 ? (
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title={`${preflightSummary.errorsCount} Preflight Error(s)`} />
+              ) : preflightSummary.warningsCount > 0 ? (
+                <span className="w-2 h-2 rounded-full bg-amber-500" title={`${preflightSummary.warningsCount} Preflight Warning(s)`} />
+              ) : null}
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-150 ${isToolsMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Popover */}
+            {isToolsMenuOpen && (
+              <div
+                className="absolute right-0 top-full mt-1.5 w-64 bg-white rounded-xl shadow-xl border border-slate-200 z-50 py-2 divide-y divide-slate-100 text-xs animate-in fade-in zoom-in-95 duration-100"
+                role="menu"
+                aria-label="Editor Tools Menu"
+              >
+                {/* Group 1: Content & Structure */}
+                <div className="py-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                    Content &amp; Structure
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-blocks"
+                    onClick={() => {
+                      setActiveTab('blocks');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'blocks'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <ListTree className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Blocks</span>
+                    </span>
+                    <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">
+                      {blocksCount}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-comments"
+                    onClick={() => {
+                      setActiveTab('comments');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'comments'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Comments</span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-versions"
+                    onClick={() => {
+                      setActiveTab('versions');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'versions'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <History className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Versions</span>
+                    </span>
+                  </button>
+                </div>
+
+                {/* Group 2: Language & Typography */}
+                <div className="py-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                    Language &amp; Typography
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-language"
+                    onClick={() => {
+                      setActiveTab('language');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'language'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <Globe className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Language</span>
+                    </span>
+                    <span className="text-[10px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded font-mono uppercase font-semibold">
+                      {docLang} • {docDir}
+                    </span>
+                  </button>
+
+                  {(isExpert || docLang === 'hi' || book.hindiSettings) && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      id="tab-hindi"
+                      onClick={() => {
+                        setActiveTab('hindi');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                        activeTab === 'hindi'
+                          ? 'bg-orange-50 text-orange-700 font-bold'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="flex items-center space-x-2">
+                        <Keyboard className="w-3.5 h-3.5 text-orange-500" />
+                        <span>Hindi Publishing</span>
+                      </span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-typography"
+                    onClick={() => {
+                      setActiveTab('typography');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'typography'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <Type className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Typography</span>
+                    </span>
+                  </button>
+
+                  {isExpert && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      id="tab-fonts"
+                      onClick={() => {
+                        setActiveTab('fonts');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                        activeTab === 'fonts'
+                          ? 'bg-purple-50 text-purple-700 font-bold'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="flex items-center space-x-2">
+                        <Type className="w-3.5 h-3.5 text-purple-500" />
+                        <span>Custom Fonts</span>
+                      </span>
+                      <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">
+                        {book.customFonts?.length || 0}
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Group 3: Media */}
+                <div className="py-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                    Media
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-images"
+                    onClick={() => {
+                      setActiveTab('images');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'images'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Images</span>
+                    </span>
+                    <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">
+                      {images.length}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Group 4: Prepress & Print */}
+                <div className="py-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 font-mono">
+                    Prepress &amp; Print
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-preflight"
+                    onClick={() => {
+                      setActiveTab('preflight');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'preflight'
+                        ? 'bg-indigo-50 text-indigo-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Preflight</span>
+                    </span>
+                    {preflightSummary.errorsCount > 0 ? (
+                      <span className="px-1.5 py-0.2 bg-rose-100 text-rose-700 font-bold rounded-full text-[10px]">
+                        {preflightSummary.errorsCount} Error(s)
+                      </span>
+                    ) : preflightSummary.warningsCount > 0 ? (
+                      <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 font-bold rounded-full text-[10px]">
+                        {preflightSummary.warningsCount} Warning(s)
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 font-bold rounded-full text-[10px]">
+                        ✓ Pass
+                      </span>
+                    )}
+                  </button>
+
+                  {isExpert && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      id="tab-color"
+                      onClick={() => {
+                        setActiveTab('color');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                        activeTab === 'color'
+                          ? 'bg-purple-50 text-purple-700 font-bold'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="flex items-center space-x-2">
+                        <Printer className="w-3.5 h-3.5 text-purple-500" />
+                        <span>Color (CMYK)</span>
+                      </span>
+                    </button>
+                  )}
+
+                  {isExpert && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      id="tab-design"
+                      onClick={() => {
+                        setActiveTab('design');
+                        setIsToolsMenuOpen(false);
+                      }}
+                      className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                        activeTab === 'design'
+                          ? 'bg-purple-50 text-purple-700 font-bold'
+                          : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="flex items-center space-x-2">
+                        <Palette className="w-3.5 h-3.5 text-purple-500" />
+                        <span>Design</span>
+                      </span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    role="menuitem"
+                    id="tab-print"
+                    onClick={() => {
+                      setActiveTab('print');
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors ${
+                      activeTab === 'print'
+                        ? 'bg-amber-50 text-amber-700 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="flex items-center space-x-2">
+                      <Package className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Print Specs</span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
