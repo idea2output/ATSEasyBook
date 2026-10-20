@@ -120,7 +120,7 @@ export const AudienceSection: React.FC = () => {
                   For Print Professionals &amp; Production Houses
                 </h3>
                 <p className="text-sm sm:text-base text-neutral-400 mt-2 leading-relaxed">
-                  Eliminate prepress bottlenecks with certified PDF checks, press-sheet imposition, and color management.
+                  Eliminate prepress bottlenecks with certified PDF checks, press-sheet impose, and color management.
                 </p>
               </div>
 
@@ -136,7 +136,7 @@ export const AudienceSection: React.FC = () => {
                 <div className="flex items-start space-x-3 text-sm text-neutral-300">
                   <CheckCircle2 className="w-5 h-5 text-neutral-400 shrink-0 mt-0.5" />
                   <div>
-                    <strong className="text-white block font-bold">Create Press Impositions</strong>
+                    <strong className="text-white block font-bold">Create Press Impose Layouts</strong>
                     <span>Generate 8-page and 16-page signatures with automated spine creep and gutter compensation.</span>
                   </div>
                 </div>

@@ -197,7 +197,7 @@ export const PreflightReportView: React.FC<PreflightReportViewProps> = ({ job, o
               <div className="px-3.5 py-2.5 bg-neutral-950 border border-neutral-800 rounded-lg text-xs space-y-0.5">
                 <span className="text-[10px] uppercase font-bold text-emerald-400 flex items-center space-x-1">
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Imposition Ready</span>
+                  <span>Impose Ready</span>
                 </span>
                 <span className="font-mono text-[11px] text-neutral-300">
                   {job.impositionReadyMetadata.trimWidthInches.toFixed(2)}&quot; ×{' '}
@@ -241,7 +241,7 @@ export const PreflightReportView: React.FC<PreflightReportViewProps> = ({ job, o
                 className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 text-rose-400 border border-neutral-700 hover:border-rose-700 rounded-lg text-xs font-semibold transition-colors"
               >
                 <Layers className="w-4 h-4 text-rose-500" />
-                <span>Imposition Handoff</span>
+                <span>Impose Handoff</span>
               </button>
             )}
           </div>

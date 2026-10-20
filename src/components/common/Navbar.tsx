@@ -139,9 +139,10 @@ export const Navbar: React.FC<NavbarProps> = ({ currentBookTitle, onRefreshProje
               id="navbar-imposition-btn"
               onClick={() => setIsImpositionModalOpen(true)}
               className="text-xs font-medium text-slate-600 hover:text-rose-600 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-100 flex items-center space-x-1"
+              title="Launch ATS Impose Workspace"
             >
               <Layers className="w-3.5 h-3.5 text-rose-500" />
-              <span>Imposition</span>
+              <span>Impose</span>
             </button>
 
             {/* User Account Controls */}

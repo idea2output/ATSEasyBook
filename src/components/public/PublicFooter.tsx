@@ -17,7 +17,7 @@ export const PublicFooter: React.FC = () => {
               <AtsLogo variant="dark" size="md" />
             </Link>
             <p className="text-neutral-400 text-xs sm:text-sm leading-relaxed max-w-sm">
-              The high-precision publishing foundation for author manuscript formatting, certified CMYK PDF/X prepress, and commercial offset imposition.
+              The high-precision publishing foundation for author manuscript formatting, certified CMYK PDF/X prepress, and commercial offset impose.
             </p>
             <div className="flex items-center space-x-2 text-[11px] text-neutral-400">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -44,9 +44,9 @@ export const PublicFooter: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/#products" className="hover:text-white transition-colors flex items-center space-x-1.5">
+                <Link href="/products/impose" className="hover:text-white transition-colors flex items-center space-x-1.5">
                   <span className="text-rose-500 font-bold">•</span>
-                  <span>ATS Imposition</span>
+                  <span>ATS Impose</span>
                 </Link>
               </li>
               <li>

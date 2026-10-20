@@ -128,7 +128,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 }`}
               >
                 <Layers className="w-3.5 h-3.5" />
-                <span>Press Signature Imposition</span>
+                <span>Press Signature Impose</span>
               </button>
             </div>
           </div>

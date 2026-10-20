@@ -35,7 +35,7 @@ export const ProductsSection: React.FC = () => {
             Engineered for Precision Print &amp; Publishing
           </h2>
           <p className="text-neutral-400 text-base sm:text-lg leading-relaxed">
-            Three foundational platforms powering the complete cycle from raw manuscript authoring and certified prepress repair to commercial offset press imposition.
+            Three foundational platforms powering the complete cycle from raw manuscript authoring and certified prepress repair to commercial offset press impose layouts.
           </p>
         </div>
 
@@ -176,7 +176,7 @@ export const ProductsSection: React.FC = () => {
                   </li>
                   <li className="flex items-start space-x-2.5">
                     <CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                    <span>Direct ATS Imposition handoff readiness</span>
+                    <span>Direct ATS Impose handoff readiness</span>
                   </li>
                 </ul>
               </div>
@@ -207,7 +207,7 @@ export const ProductsSection: React.FC = () => {
             </div>
           </div>
 
-          {/* PRODUCT 3: ATS Imposition */}
+          {/* PRODUCT 3: ATS Impose */}
           <div className="p-8 sm:p-12 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 rounded-2xl flex flex-col justify-between space-y-8 transition-all group">
             <div className="space-y-6">
               {/* Product Badge & Header */}
@@ -222,10 +222,10 @@ export const ProductsSection: React.FC = () => {
 
               <div>
                 <h3 className="text-2xl sm:text-4xl font-black text-white">
-                  ATS Imposition
+                  ATS Impose
                 </h3>
                 <p className="text-sm font-semibold text-rose-500 font-mono mt-1 uppercase tracking-wider">
-                  Commercial Press Sheet &amp; Signature Optimization (MyDraw)
+                  Commercial Press Sheet &amp; Signature Layouts (MyDraw)
                 </p>
               </div>
 
@@ -274,22 +274,23 @@ export const ProductsSection: React.FC = () => {
 
             {/* Actions */}
             <div className="pt-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                id="launch-ats-imposition-product-btn"
-                onClick={() => setIsImpositionModalOpen(true)}
+              <Link
+                href="/products/impose"
+                id="explore-impose-product-btn"
                 className="px-6 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all hover:scale-[1.02] flex items-center space-x-2 shadow-sm"
               >
-                <span>Launch ATS Imposition</span>
-                <ExternalLink className="w-4 h-4" />
-              </button>
+                <span>Learn More &amp; Specs</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
 
               <button
                 type="button"
+                id="launch-ats-impose-product-btn"
                 onClick={() => setIsImpositionModalOpen(true)}
-                className="px-5 py-3.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition-colors border border-neutral-800"
+                className="px-5 py-3.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition-colors border border-neutral-800 flex items-center space-x-2"
               >
-                <span>Endpoint &amp; Specs</span>
+                <span>Launch Impose</span>
+                <ExternalLink className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>

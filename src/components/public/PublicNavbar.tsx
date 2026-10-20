@@ -75,11 +75,15 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onSampleBookLaunch }
               Products
             </Link>
             <Link
-              href="/#products"
-              id="public-nav-imposition-link"
-              className="hover:text-white hover:bg-neutral-900 transition-colors px-3.5 py-2 rounded-md text-xs font-semibold uppercase tracking-wider text-neutral-300"
+              href="/products/impose"
+              id="public-nav-impose-link"
+              className={`hover:text-white hover:bg-neutral-900 transition-colors px-3.5 py-2 rounded-md text-xs font-semibold uppercase tracking-wider ${
+                pathname?.startsWith('/products/impose') || pathname?.startsWith('/Impose')
+                  ? 'text-rose-500 font-bold'
+                  : 'text-neutral-300'
+              }`}
             >
-              Imposition
+              Impose
             </Link>
             <Link
               href="/products/preflight"
@@ -188,6 +192,20 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onSampleBookLaunch }
                 className="px-3 py-2.5 rounded-md hover:bg-neutral-900 hover:text-white font-semibold"
               >
                 Products
+              </Link>
+              <Link
+                href="/products/impose"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`px-3 py-2.5 rounded-md hover:bg-neutral-900 font-semibold flex items-center justify-between ${
+                  pathname?.startsWith('/products/impose') || pathname?.startsWith('/Impose')
+                    ? 'text-rose-500 font-bold bg-neutral-900/50'
+                    : 'text-neutral-300 hover:text-white'
+                }`}
+              >
+                <span>Impose</span>
+                <span className="px-2 py-0.5 bg-rose-600/20 text-rose-400 text-[10px] font-mono font-bold rounded">
+                  Live
+                </span>
               </Link>
               <Link
                 href="/products/preflight"

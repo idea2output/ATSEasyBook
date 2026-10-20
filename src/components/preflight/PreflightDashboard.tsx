@@ -156,7 +156,7 @@ export const PreflightDashboard: React.FC = () => {
 
         <div className="p-5 bg-neutral-900 border border-neutral-800 rounded-xl space-y-1">
           <span className="text-[10px] uppercase font-bold text-neutral-400 tracking-wider">
-            Imposition Ready
+            Impose Ready
           </span>
           <p className="text-2xl font-black font-mono text-rose-500">{totalImpositionReady}</p>
         </div>
@@ -341,7 +341,7 @@ export const PreflightDashboard: React.FC = () => {
                       ) : job.impositionReadyMetadata ? (
                         <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded text-[10px] font-bold uppercase flex items-center space-x-1 w-fit">
                           <Printer className="w-3 h-3" />
-                          <span>Imposition Ready</span>
+                          <span>Impose Ready</span>
                         </span>
                       ) : (
                         <span className="text-neutral-500 text-[11px]">Original Inspected</span>

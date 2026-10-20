@@ -110,14 +110,14 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
             <div>
               <div className="flex items-center space-x-2">
                 <h3 id="imposition-launch-modal-title" className="text-xl font-black text-white">
-                  ATS Imposition
+                  ATS Impose
                 </h3>
                 <span className="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider font-bold rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
                   Submodule Module
                 </span>
               </div>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Commercial Press Sheet &amp; Multi-Page Signature Optimization (MyDraw Engine)
+                Commercial Press Sheet &amp; Multi-Page Signature Layouts (MyDraw Engine)
               </p>
             </div>
           </div>

@@ -460,7 +460,7 @@ export const PlatformHeader: React.FC<PlatformHeaderProps> = ({ currentModule })
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">ATS Platform Help &amp; Specs</h3>
-                  <p className="text-xs text-neutral-400">FOGRA39, PDF/X, and Imposition Architecture</p>
+                  <p className="text-xs text-neutral-400">FOGRA39, PDF/X, and Impose Architecture</p>
                 </div>
               </div>
               <button

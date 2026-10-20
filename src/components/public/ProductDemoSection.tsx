@@ -36,7 +36,7 @@ export const ProductDemoSection: React.FC = () => {
               Experience the Precision Engine
             </h2>
             <p className="text-sm sm:text-base text-slate-300 max-w-xl leading-relaxed">
-              Fictional editorial demonstration illustrating accurate text flow, 2-column balancing, and 16-page press signature imposition.
+              Fictional editorial demonstration illustrating accurate text flow, 2-column balancing, and 16-page press signature impose layouts.
             </p>
           </div>
 
@@ -66,7 +66,7 @@ export const ProductDemoSection: React.FC = () => {
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>ATS Imposition Demo</span>
+              <span>ATS Impose Demo</span>
             </button>
           </div>
         </div>
@@ -82,7 +82,7 @@ export const ProductDemoSection: React.FC = () => {
               <span className="ml-3 font-mono text-[11px] text-slate-300">
                 {activeTab === 'easybook'
                   ? 'ats://easybook.studio/preview/the-arctic-sea#6x9-two-col'
-                  : 'ats://imposition.press/signatures/sheet-4up-perfect-bind'}
+                  : 'ats://impose.press/signatures/sheet-4up-perfect-bind'}
               </span>
             </div>
 
@@ -202,9 +202,9 @@ export const ProductDemoSection: React.FC = () => {
                   <span className="text-rose-400 font-bold">Gripper Margin: 0.5 in • Bleed: 0.125 in</span>
                 </div>
 
-                {/* Simulated 4-Up Imposition Grid */}
+                {/* Simulated 4-Up Impose Grid */}
                 <div className="grid grid-cols-4 gap-3 p-4 bg-slate-950/90 rounded-xl border border-dashed border-white/[0.12]">
-                  {/* Page 5 (Upside down in head-to-head imposition) */}
+                  {/* Page 5 (Upside down in head-to-head impose) */}
                   <div className="bg-slate-900/90 p-3 rounded-lg border border-slate-800 text-center flex flex-col justify-between h-36">
                     <span className="text-[10px] font-mono text-slate-400">Page 5 [Head]</span>
                     <div className="text-xs font-bold text-slate-200">Text Content</div>

@@ -153,10 +153,10 @@ export default function PreflightProductMarketingPage() {
                   <Printer className="w-5 h-5" />
                 </div>
                 <h3 className="text-base font-bold text-white">
-                  ATS Imposition Ready
+                  ATS Impose Ready
                 </h3>
                 <p className="text-xs text-neutral-400 leading-relaxed">
-                  Compliant files generate machine-readable imposition metadata—saddle-stitch and perfect-bound signatures ready for high-speed plates.
+                  Compliant files generate machine-readable impose metadata—saddle-stitch and perfect-bound signatures ready for high-speed plates.
                 </p>
               </div>
             </div>

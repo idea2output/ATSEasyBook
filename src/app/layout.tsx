@@ -4,15 +4,15 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'ATS Tech — The Engineering Platform for Modern Print & Publishing Technology',
   description:
-    'Comprehensive technology platform for automated book design, accurate text-flow pagination, FOGRA39 CMYK prepress, commercial press imposition, and multilingual RTL publishing.',
+    'Comprehensive technology platform for automated book design, accurate text-flow pagination, FOGRA39 CMYK prepress, commercial press impose layouts, and multilingual RTL publishing.',
   keywords: [
     'ATS Tech',
     'ATS EasyBook',
-    'ATS Imposition',
+    'ATS Impose',
     'print prepress',
     'book pagination',
     'CMYK PDF/X-4',
-    'press imposition',
+    'press impose',
     'multilingual publishing',
     'Arabic publishing',
     'Urdu Nastaliq',
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'ATS Tech — Engineering Foundation for Modern Print & Publishing',
     description:
-      'From structured manuscript typography and automated reflow to commercial press imposition and certified CMYK PDF/X-4 prepress.',
+      'From structured manuscript typography and automated reflow to commercial press impose layouts and certified CMYK PDF/X-4 prepress.',
     url: 'https://atstech.io',
     siteName: 'ATS Tech',
     locale: 'en_US',
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'ATS Tech — Modern Print & Publishing Technology',
     description:
-      'Automated book design, certified prepress, accurate text flow, and commercial press imposition.',
+      'Automated book design, certified prepress, accurate text flow, and commercial press impose layouts.',
   },
   metadataBase: new URL('http://localhost:3008'),
 };

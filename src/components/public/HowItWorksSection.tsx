@@ -45,7 +45,7 @@ export const HowItWorksSection: React.FC = () => {
     {
       number: '05',
       title: 'Print / Produce',
-      tagline: 'Imposition & Press Bridge',
+      tagline: 'Impose & Press Bridge',
       description: 'Impose multi-page signatures for offset and digital presses. Automated paper thickness creep compensation and registration marks for direct CTP production.',
       icon: <Layers className="w-5 h-5 text-rose-500" />,
     },
