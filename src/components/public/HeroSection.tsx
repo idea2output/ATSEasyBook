@@ -13,6 +13,7 @@ import {
   FileText,
   Play,
   RotateCcw,
+  ChevronDown,
 } from 'lucide-react';
 
 interface HeroSectionProps {
@@ -26,32 +27,70 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 }) => {
   const router = useRouter();
   const [activeVisualTab, setActiveVisualTab] = useState<'transformation' | 'imposition'>('transformation');
+  const [fontPairing, setFontPairing] = useState<'palagio-sans' | 'palagio-manrope' | 'palagio-poppins' | 'playfair-manrope'>('palagio-sans');
+
+  const getLine1FontClass = () => {
+    switch (fontPairing) {
+      case 'playfair-manrope':
+        return 'font-playfair';
+      case 'palagio-sans':
+      case 'palagio-manrope':
+      case 'palagio-poppins':
+      default:
+        return 'font-palagio';
+    }
+  };
+
+  const getLine2FontClass = () => {
+    switch (fontPairing) {
+      case 'palagio-manrope':
+      case 'playfair-manrope':
+        return 'font-manrope';
+      case 'palagio-poppins':
+        return 'font-poppins';
+      case 'palagio-sans':
+      default:
+        return 'font-hero-sans';
+    }
+  };
 
   return (
-    <section className="relative bg-black text-white pt-20 pb-24 md:pt-28 md:pb-32 border-b border-neutral-800 overflow-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
-        {/* Core Hero Editorial Header */}
-        <div className="max-w-4xl mx-auto text-center space-y-6">
-          {/* Headline: Customer-focused and Bold Editorial */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.08] text-white">
-            Create Books. Prepare Print.{' '}
-            <span className="block mt-2 text-rose-500">
+    <section className="relative bg-[#07080b] text-white border-b border-neutral-800/80 overflow-hidden">
+      {/* Ambient Red Glow for Depth */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[550px] bg-rose-600/[0.08] blur-[140px] pointer-events-none rounded-full" />
+      <div className="absolute top-2/3 right-10 w-[400px] h-[400px] bg-slate-800/[0.15] blur-[120px] pointer-events-none rounded-full" />
+
+      {/* 1. Full-Screen Hero Viewport Container */}
+      <div id="hero-viewport-stage" className="min-h-[calc(100vh-5rem)] flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 py-12 md:py-20 relative z-10 text-center">
+        <div className="max-w-5xl mx-auto space-y-8 flex flex-col items-center">
+          {/* Subtle Category Pill */}
+          <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-rose-600/10 border border-rose-600/30 text-rose-400 text-xs font-mono font-bold uppercase tracking-widest shadow-sm">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+            <span>Commercial Publishing &amp; Prepress Technology</span>
+          </div>
+
+          {/* Headline: Line 1 Palagio + Line 2 Sans Serif */}
+          <h1 className="tracking-tight text-center">
+            <span className={`block ${getLine1FontClass()} text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-[#f1f3f7] leading-[1.12]`}>
+              Create Books. Prepare Print.
+            </span>
+            <span className={`block ${getLine2FontClass()} text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-rose-500 mt-3 sm:mt-5 leading-[1.12]`}>
               Deliver with Confidence.
             </span>
           </h1>
 
-          {/* Supporting Text */}
-          <p className="text-lg sm:text-xl text-neutral-300 leading-relaxed font-normal max-w-2xl mx-auto">
+          {/* Supporting Text: Softened Off-White per Dark Mode Best Practices */}
+          <p className="text-base sm:text-lg md:text-xl text-neutral-300 leading-relaxed font-normal max-w-2xl mx-auto">
             ATS Tech brings book creation, print-ready PDF production, prepress tools, and production workflows into one professional platform.
           </p>
 
           {/* Call to Action Buttons */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
             {/* Primary CTA */}
             <Link
               href="/books/new"
               id="create-new-book-btn"
-              className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-md flex items-center justify-center space-x-2.5"
+              className="px-8 py-4 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-sm font-bold transition-all hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-rose-950/40 flex items-center justify-center space-x-2.5"
             >
               <BookOpen className="w-4 h-4" />
               <span>Create a Book</span>
@@ -78,7 +117,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span>Watch How It Works</span>
             </a>
 
-            {/* Sample Novel Launcher for quick interactive test */}
+            {/* Sample Novel Launcher */}
             <button
               type="button"
               id="load-sample-novel-btn"
@@ -91,10 +130,74 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <span>{isCreatingBook ? 'Loading...' : 'Try Sample Novel'}</span>
             </button>
           </div>
-        </div>
 
-        {/* Section 3: Large, Clean Realistic Product Demonstration */}
-        <div id="demo-interactive" className="max-w-6xl mx-auto space-y-4">
+          {/* Typography Suggestions Pill (Interactive Font Pairing Preview) */}
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-2 text-[11px] font-mono text-neutral-400">
+            <span className="text-neutral-500 uppercase tracking-wider font-semibold mr-1">Suggested Pairings:</span>
+            <button
+              type="button"
+              id="font-pairing-palagio-sans"
+              onClick={() => setFontPairing('palagio-sans')}
+              className={`px-3 py-1 rounded-full border transition-all ${
+                fontPairing === 'palagio-sans'
+                  ? 'bg-rose-600/20 border-rose-500/50 text-rose-300 font-bold'
+                  : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400'
+              }`}
+            >
+              Palagio + Inter (Default)
+            </button>
+            <button
+              type="button"
+              id="font-pairing-palagio-manrope"
+              onClick={() => setFontPairing('palagio-manrope')}
+              className={`px-3 py-1 rounded-full border transition-all ${
+                fontPairing === 'palagio-manrope'
+                  ? 'bg-rose-600/20 border-rose-500/50 text-rose-300 font-bold'
+                  : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400'
+              }`}
+            >
+              Palagio + Manrope
+            </button>
+            <button
+              type="button"
+              id="font-pairing-palagio-poppins"
+              onClick={() => setFontPairing('palagio-poppins')}
+              className={`px-3 py-1 rounded-full border transition-all ${
+                fontPairing === 'palagio-poppins'
+                  ? 'bg-rose-600/20 border-rose-500/50 text-rose-300 font-bold'
+                  : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400'
+              }`}
+            >
+              Palagio + Poppins
+            </button>
+            <button
+              type="button"
+              id="font-pairing-playfair-manrope"
+              onClick={() => setFontPairing('playfair-manrope')}
+              className={`px-3 py-1 rounded-full border transition-all ${
+                fontPairing === 'playfair-manrope'
+                  ? 'bg-rose-600/20 border-rose-500/50 text-rose-300 font-bold'
+                  : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400'
+              }`}
+            >
+              Playfair + Manrope
+            </button>
+          </div>
+
+          {/* Scroll Cue to Live Demonstration */}
+          <a
+            href="#demo-interactive"
+            className="pt-6 sm:pt-10 inline-flex flex-col items-center space-y-1.5 text-neutral-400 hover:text-white transition-colors group cursor-pointer"
+            aria-label="Scroll down to interactive demonstration"
+          >
+            <span className="text-[11px] font-mono tracking-widest uppercase">Explore Live Prepress Engine</span>
+            <ChevronDown className="w-4 h-4 text-rose-500 animate-bounce group-hover:text-rose-400" />
+          </a>
+        </div>
+      </div>
+
+      {/* 2. Dedicated Interactive Product Demonstration (Below the Full-Screen Hero Viewport) */}
+      <div id="demo-interactive" className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 space-y-6 border-t border-neutral-900 scroll-mt-20 relative z-10">
           {/* Demonstration Mode Switcher */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-neutral-800 pb-3">
             <div className="flex items-center space-x-2">
@@ -312,7 +415,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             )}
           </div>
         </div>
-      </div>
     </section>
   );
 };
