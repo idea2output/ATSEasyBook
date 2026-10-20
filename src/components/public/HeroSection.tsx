@@ -77,7 +77,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <span className={`block ${getLine1FontClass()} text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight text-[#f1f3f7] leading-[1.12]`}>
               Create Books. Prepare Print.
             </span>
-            <span className={`block ${getLine2FontClass()} text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-rose-500 mt-3 sm:mt-5 leading-[1.12]`}>
+            <span className={`block ${getLine2FontClass()} text-xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-rose-500 mt-2 sm:mt-3 leading-[1.15]`}>
               Deliver with Confidence.
             </span>
           </h1>
