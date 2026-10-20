@@ -20,132 +20,37 @@ import {
   Check,
   ArrowRight,
 } from 'lucide-react';
+import { getComingSoonProducts, ProductRegistryItem } from '@/services/products/productRegistry';
 
-interface ComingSoonProduct {
-  id: string;
-  name: string;
-  category: 'Publishing' | 'Prepress' | 'Workflow' | 'Automation';
-  description: string;
-  scopeHighlight: string;
-  icon: React.ReactNode;
-}
-
-const UPCOMING_PRODUCTS: ComingSoonProduct[] = [
-  // Publishing
-  {
-    id: 'multilingual-suite',
-    name: 'ATS Multilingual Publishing Suite',
-    category: 'Publishing',
-    description: 'Enterprise translation memory and multi-direction publishing pipeline for parallel English, Arabic, Urdu, Hindi, and CJK edition synchronisation.',
-    scopeHighlight: 'Side-by-Side RTL/LTR Alignment & Translation Sync',
-    icon: <Languages className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'variable-data',
-    name: 'ATS Variable Data Printing',
-    category: 'Publishing',
-    description: 'Dynamic template population from structured CSV/JSON data: high-speed multi-record PDF composition with batch-level preflight validation.',
-    scopeHighlight: 'High-Throughput VDP Engine with Dynamic Text Fitting',
-    icon: <Database className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'label-packaging',
-    name: 'ATS Label, Barcode & Packaging Studio',
-    category: 'Publishing',
-    description: 'Vector barcode generator (EAN-13, ISBN-13, QR, DataMatrix), dieline layout, and packaging compliance tools for box and label production.',
-    scopeHighlight: 'ISO/IEC Compliant Barcodes with Dieline Separation',
-    icon: <Barcode className="w-5 h-5 text-rose-500" />,
-  },
-
-  // Prepress
-  {
-    id: 'preflight-repair',
-    name: 'ATS Preflight & PDF Repair',
-    category: 'Prepress',
-    description: 'Automated post-rip PDF fixing: converts stray RGB elements to target CMYK profiles, downsamples oversized rasters, and fixes font subsetting errors.',
-    scopeHighlight: 'PDF/X-1a, PDF/X-4 & Ghent Workgroup Compliance',
-    icon: <FileCheck className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'color-ink-coverage',
-    name: 'ATS Color & Ink Coverage Analyzer',
-    category: 'Prepress',
-    description: 'Pixel-level Total Area Coverage (TAC) auditing, ink consumption calculation per separation (CMYK + spot), and high-TAC warnings.',
-    scopeHighlight: 'Per-Plate Ink Volume Estimation & TAC Limit Audits',
-    icon: <Droplet className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'imposition-bridge',
-    name: 'ATS Imposition + CTP Workflow Bridge',
-    category: 'Prepress',
-    description: 'Direct JDF/JMF imposition ticket export for commercial CTP RIP engines (Harlequin, Apogee, Prinergy) with press registration crosshairs.',
-    scopeHighlight: 'JDF/JMF Commercial RIP Export & Offset Plate Binding',
-    icon: <Cpu className="w-5 h-5 text-rose-500" />,
-  },
-
-  // Workflow
-  {
-    id: 'job-portal',
-    name: 'ATS Print Job Portal',
-    category: 'Workflow',
-    description: 'White-label customer-facing file upload and ordering portal with automated flight checks, live pre-pricing, and instantaneous order routing.',
-    scopeHighlight: 'Self-Serve File Submission & Automated Preflight',
-    icon: <Globe className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'production-board',
-    name: 'ATS Production Board / Print MIS Lite',
-    category: 'Workflow',
-    description: 'Shop-floor kanban board tracking jobs through prepress, press, bindery, finishing, and dispatch with machine-hour scheduling.',
-    scopeHighlight: 'Real-Time Floor Tracking & Stage Gating',
-    icon: <Kanban className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'proofing-approval',
-    name: 'ATS Proofing & Client Approval',
-    category: 'Workflow',
-    description: 'Interactive browser proofing platform with soft-proofing color accuracy, color-blind simulation, version compare overlays, and digital sign-off.',
-    scopeHighlight: 'Client Annotations & Cryptographic Audit Sign-off',
-    icon: <CheckSquare className="w-5 h-5 text-rose-500" />,
-  },
-
-  // Automation
-  {
-    id: 'quote-calculator',
-    name: 'ATS Quote & Print Calculator',
-    category: 'Automation',
-    description: 'Instant press estimation for sheet-fed and digital presses: calculates substrate costs, ink consumption, click charges, and bindery surcharges.',
-    scopeHighlight: 'Dynamic Margin & Multi-Volume Tier Estimation',
-    icon: <Calculator className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'sheet-optimizer',
-    name: 'ATS Paper & Sheet Optimizer',
-    category: 'Automation',
-    description: 'Substrate cutting algorithm and combination run calculator: optimizes gang runs and grain direction across standard mill parent sheets.',
-    scopeHighlight: 'N-Up Gang Run Yield Optimization & Waste Reduction',
-    icon: <Maximize className="w-5 h-5 text-rose-500" />,
-  },
-  {
-    id: 'bindery-finishing',
-    name: 'ATS Bindery & Finishing Calculator',
-    category: 'Automation',
-    description: 'Calculates folding, trimming, saddle-stitch, and perfect-bind production timings, spine bulk thickness, and glue consumption.',
-    scopeHighlight: 'Spine Width Calculation by Paper Caliper (PPI)',
-    icon: <Scissors className="w-5 h-5 text-rose-500" />,
-  },
-];
+const getProductIcon = (iconName: string) => {
+  switch (iconName) {
+    case 'Languages': return <Languages className="w-5 h-5 text-rose-500" />;
+    case 'Database': return <Database className="w-5 h-5 text-rose-500" />;
+    case 'Barcode': return <Barcode className="w-5 h-5 text-rose-500" />;
+    case 'Droplet': return <Droplet className="w-5 h-5 text-rose-500" />;
+    case 'Cpu': return <Cpu className="w-5 h-5 text-rose-500" />;
+    case 'Globe': return <Globe className="w-5 h-5 text-rose-500" />;
+    case 'Kanban': return <Kanban className="w-5 h-5 text-rose-500" />;
+    case 'CheckSquare': return <CheckSquare className="w-5 h-5 text-rose-500" />;
+    case 'Calculator': return <Calculator className="w-5 h-5 text-rose-500" />;
+    case 'Scissors': return <Scissors className="w-5 h-5 text-rose-500" />;
+    case 'Maximize': return <Maximize className="w-5 h-5 text-rose-500" />;
+    case 'Clock': return <Clock className="w-5 h-5 text-rose-500" />;
+    default: return <Sparkles className="w-5 h-5 text-rose-500" />;
+  }
+};
 
 export const ComingSoonSection: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [earlyAccessEmail, setEarlyAccessEmail] = useState('');
   const [isEarlyAccessSubmitted, setIsEarlyAccessSubmitted] = useState(false);
 
+  const comingSoonList = getComingSoonProducts();
   const categories = ['All', 'Publishing', 'Prepress', 'Workflow', 'Automation'];
 
   const filteredProducts = selectedCategory === 'All'
-    ? UPCOMING_PRODUCTS
-    : UPCOMING_PRODUCTS.filter((p) => p.category === selectedCategory);
+    ? comingSoonList
+    : comingSoonList.filter((p) => p.category === selectedCategory);
 
   const handleEarlyAccessSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,7 +107,7 @@ export const ComingSoonSection: React.FC = () => {
                 {/* Header Row */}
                 <div className="flex items-center justify-between">
                   <div className="p-2.5 bg-neutral-900 border border-neutral-800 rounded-lg text-rose-500 group-hover:bg-neutral-850 transition-colors">
-                    {prod.icon}
+                    {getProductIcon(prod.iconName)}
                   </div>
                   <span className="px-2.5 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-400 text-[10px] font-mono font-bold uppercase tracking-wider">
                     Coming Soon

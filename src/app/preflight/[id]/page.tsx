@@ -3,8 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { PublicNavbar } from '@/components/public/PublicNavbar';
-import { PublicFooter } from '@/components/public/PublicFooter';
+import { PlatformShell } from '@/components/platform/PlatformShell';
 import { PreflightReportView } from '@/components/preflight/PreflightReportView';
 import { PreflightJob } from '@/types/preflight';
 import { preflightJobRepository } from '@/services/preflight/preflightJobRepository';
@@ -43,10 +42,8 @@ export default function PreflightJobDetailPage() {
   }, [jobId]);
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col font-sans selection:bg-rose-600 selection:text-white">
-      <PublicNavbar />
-
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <PlatformShell currentModule="preflight">
+      <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Breadcrumb / Back Link */}
         <div className="flex items-center justify-between">
           <Link
@@ -89,9 +86,7 @@ export default function PreflightJobDetailPage() {
             onJobUpdated={(updated) => setJob(updated)}
           />
         )}
-      </main>
-
-      <PublicFooter />
-    </div>
+      </div>
+    </PlatformShell>
   );
 }

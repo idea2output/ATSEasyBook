@@ -23,6 +23,8 @@ import {
 } from '@/services/imposition/impositionConfig';
 import { ImpositionHandoffPayload } from '@/types/impositionHandoff';
 import { downloadHandoffPacket } from '@/services/imposition/impositionHandoffService';
+import { handoffRepository } from '@/services/handoff/handoffRepository';
+import { authService } from '@/services/cloud/authService';
 
 interface ImpositionLaunchModalProps {
   isOpen: boolean;
@@ -72,8 +74,29 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
 
   const handleLaunch = () => {
     if (!config.url) return;
+    let targetUrl = config.url;
+
+    if (handoffPayload) {
+      const currentUser = authService.getCurrentUserSync() || {
+        id: 'usr-default',
+        email: 'operator@atstech.com',
+        displayName: 'Prepress Operator',
+        role: 'editor',
+        organizationName: 'ATS Default Org',
+        preferredColorProfile: 'FOGRA39',
+        preferredLanguage: 'en',
+        timezone: 'UTC',
+        isVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const record = handoffRepository.createHandoff(handoffPayload, currentUser);
+      const sep = targetUrl.includes('?') ? '&' : '?';
+      targetUrl = `${targetUrl}${sep}handoffId=${encodeURIComponent(record.id)}`;
+    }
+
     // Launch standalone application in a new browser tab without iframe embedding
-    window.open(config.url, '_blank', 'noopener,noreferrer');
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (

@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { BookProject } from '@/types/book';
 import { bookRepository } from '@/services/storage/bookRepository';
 import { BookCard } from '@/components/dashboard/BookCard';
-import { Navbar } from '@/components/common/Navbar';
+import { PlatformShell } from '@/components/platform/PlatformShell';
+import { UnifiedActivityFeed } from '@/components/dashboard/UnifiedActivityFeed';
 import { Plus, BookOpen, Sparkles, FileText, Loader2, AlertCircle, HardDrive, ShieldCheck, Layers, ExternalLink } from 'lucide-react';
 import { ImpositionLaunchModal } from '@/components/imposition/ImpositionLaunchModal';
 
@@ -63,10 +64,9 @@ export default function PublisherDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <Navbar onRefreshProjects={loadBooks} />
-
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+    <PlatformShell currentModule="dashboard">
+      <div className="bg-slate-50 text-slate-900 min-h-[calc(100vh-4rem)]">
+        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
         {/* Header section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-6 border-b border-slate-200">
           <div>
@@ -228,9 +228,15 @@ export default function PublisherDashboardPage() {
             </div>
           </div>
         )}
-      </main>
 
-      {/* Delete confirmation modal */}
+        {/* Phase 11 Unified Platform Activity Feed */}
+        <div className="mt-12">
+          <UnifiedActivityFeed />
+        </div>
+      </main>
+    </div>
+
+    {/* Delete confirmation modal */}
       {deleteConfirmation && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div
@@ -270,6 +276,6 @@ export default function PublisherDashboardPage() {
         isOpen={isImpositionModalOpen}
         onClose={() => setIsImpositionModalOpen(false)}
       />
-    </div>
+    </PlatformShell>
   );
 }

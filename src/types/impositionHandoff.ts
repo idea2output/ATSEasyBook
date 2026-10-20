@@ -64,3 +64,19 @@ export interface ImpositionHandoffPayload {
   impositionIntent: ImpositionHandoffIntent;
   context: ImpositionHandoffContext;
 }
+
+export type HandoffStatus = 'pending' | 'claimed' | 'expired' | 'failed';
+
+export interface HandoffRecord {
+  id: string; // handoffId
+  status: HandoffStatus;
+  createdAt: string;
+  expiresAt: string; // e.g. 15-minute TTL
+  claimedAt?: string;
+  claimedByEmail?: string;
+  claimedByUserId?: string;
+  createdByEmail: string;
+  createdByUserId: string;
+  organizationId: string;
+  payload: ImpositionHandoffPayload;
+}
