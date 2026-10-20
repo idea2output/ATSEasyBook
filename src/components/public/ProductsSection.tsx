@@ -15,6 +15,7 @@ import {
   Printer,
   Sparkles,
   ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
 import { ImpositionLaunchModal } from '@/components/imposition/ImpositionLaunchModal';
 
@@ -34,12 +35,12 @@ export const ProductsSection: React.FC = () => {
             Engineered for Precision Print &amp; Publishing
           </h2>
           <p className="text-neutral-400 text-base sm:text-lg leading-relaxed">
-            Two foundational platforms powering the complete cycle from raw manuscript authoring to commercial offset press output.
+            Three foundational platforms powering the complete cycle from raw manuscript authoring and certified prepress repair to commercial offset press imposition.
           </p>
         </div>
 
-        {/* 2-Card Product Grid (Bold Editorial Aesthetic) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* 3-Card Product Grid (Bold Editorial Aesthetic) */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* PRODUCT 1: ATS EasyBook */}
           <div className="p-8 sm:p-12 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 rounded-2xl flex flex-col justify-between space-y-8 transition-all group">
             <div className="space-y-6">
@@ -124,7 +125,89 @@ export const ProductsSection: React.FC = () => {
             </div>
           </div>
 
-          {/* PRODUCT 2: ATS Imposition */}
+          {/* PRODUCT 2: ATS Preflight */}
+          <div className="p-8 sm:p-12 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 rounded-2xl flex flex-col justify-between space-y-8 transition-all group">
+            <div className="space-y-6">
+              {/* Product Badge & Header */}
+              <div className="flex items-center justify-between">
+                <div className="p-3 bg-neutral-900 border border-neutral-800 rounded-xl text-rose-500">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-full font-mono uppercase tracking-wider">
+                  Available Now (v1.0)
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-2xl sm:text-4xl font-black text-white">
+                  ATS Preflight
+                </h3>
+                <p className="text-sm font-semibold text-rose-500 font-mono mt-1 uppercase tracking-wider">
+                  PDF/X &amp; ISO 12647-2 Quality Inspection &amp; Repair
+                </p>
+              </div>
+
+              {/* Benefit-Focused Copy */}
+              <p className="text-neutral-300 text-sm sm:text-base leading-relaxed">
+                Eliminate press stops before plates are made. Deep inspection for CMYK separations, pure 100K black text, page box geometries, font subsets, and image DPI—with transparent, non-destructive ISO PDF/X repair.
+              </p>
+
+              {/* Key Features */}
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-neutral-400 font-mono">
+                  Key Capabilities:
+                </h4>
+                <ul className="space-y-2 text-xs sm:text-sm text-neutral-300">
+                  <li className="flex items-start space-x-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>Deep object stream &amp; bleed analysis</span>
+                  </li>
+                  <li className="flex items-start space-x-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>Pure 100K black &amp; overprint integrity</span>
+                  </li>
+                  <li className="flex items-start space-x-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>Font embedding &amp; CID subset auditing</span>
+                  </li>
+                  <li className="flex items-start space-x-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>Transparent, non-destructive PDF repair</span>
+                  </li>
+                  <li className="flex items-start space-x-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                    <span>Direct ATS Imposition handoff readiness</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="pt-3 text-xs text-neutral-400 border-t border-neutral-900">
+                <strong className="text-neutral-200">Suited For:</strong> Prepress managers, commercial print houses, and independent authors.
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-4 flex flex-wrap items-center gap-3">
+              <Link
+                href="/products/preflight"
+                id="explore-preflight-product-btn"
+                className="px-6 py-3.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all hover:scale-[1.02] flex items-center space-x-2 shadow-sm"
+              >
+                <span>Learn More &amp; Specs</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+
+              <Link
+                href="/preflight"
+                id="launch-preflight-workspace-product-btn"
+                className="px-5 py-3.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition-colors border border-neutral-800"
+              >
+                <span>Launch Workspace</span>
+              </Link>
+            </div>
+          </div>
+
+          {/* PRODUCT 3: ATS Imposition */}
           <div className="p-8 sm:p-12 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 rounded-2xl flex flex-col justify-between space-y-8 transition-all group">
             <div className="space-y-6">
               {/* Product Badge & Header */}

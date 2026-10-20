@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AtsLogo } from '@/components/brand/AtsLogo';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { UserProfileModal } from '@/components/auth/UserProfileModal';
@@ -23,6 +23,7 @@ interface PublicNavbarProps {
 
 export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onSampleBookLaunch }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -81,9 +82,13 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onSampleBookLaunch }
               Imposition
             </Link>
             <Link
-              href="/preflight"
+              href="/products/preflight"
               id="public-nav-preflight-link"
-              className="hover:text-white hover:bg-neutral-900 transition-colors px-3.5 py-2 rounded-md text-xs font-semibold uppercase tracking-wider text-rose-400"
+              className={`hover:text-white hover:bg-neutral-900 transition-colors px-3.5 py-2 rounded-md text-xs font-semibold uppercase tracking-wider ${
+                pathname?.startsWith('/products/preflight') || pathname?.startsWith('/preflight')
+                  ? 'text-rose-500 font-bold'
+                  : 'text-neutral-300'
+              }`}
             >
               Preflight
             </Link>
@@ -183,6 +188,20 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onSampleBookLaunch }
                 className="px-3 py-2.5 rounded-md hover:bg-neutral-900 hover:text-white font-semibold"
               >
                 Products
+              </Link>
+              <Link
+                href="/products/preflight"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`px-3 py-2.5 rounded-md hover:bg-neutral-900 font-semibold flex items-center justify-between ${
+                  pathname?.startsWith('/products/preflight') || pathname?.startsWith('/preflight')
+                    ? 'text-rose-500 font-bold bg-neutral-900/50'
+                    : 'text-neutral-300 hover:text-white'
+                }`}
+              >
+                <span>Preflight</span>
+                <span className="px-2 py-0.5 bg-rose-600/20 text-rose-400 text-[10px] font-mono font-bold rounded">
+                  Live
+                </span>
               </Link>
               <Link
                 href="/#how-it-works"

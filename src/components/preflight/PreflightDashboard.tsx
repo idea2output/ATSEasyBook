@@ -107,15 +107,26 @@ export const PreflightDashboard: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          id="upload-preflight-pdf-btn"
-          onClick={() => setIsUploadModalOpen(true)}
-          className="inline-flex items-center space-x-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold tracking-wide shadow-md hover:scale-[1.01] transition-all self-start md:self-auto"
-        >
-          <UploadCloud className="w-4 h-4" />
-          <span>Inspect New PDF</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+          <Link
+            href="/products/preflight"
+            id="view-preflight-product-page-btn"
+            className="inline-flex items-center space-x-2 px-4 py-2.5 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white border border-neutral-700 rounded-lg text-xs font-semibold transition-colors"
+          >
+            <span>Product Overview</span>
+            <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
+          </Link>
+
+          <button
+            type="button"
+            id="upload-preflight-pdf-btn"
+            onClick={() => setIsUploadModalOpen(true)}
+            className="inline-flex items-center space-x-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold tracking-wide shadow-md hover:scale-[1.01] transition-all"
+          >
+            <UploadCloud className="w-4 h-4" />
+            <span>Inspect New PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* KPI Stats Row */}
@@ -229,14 +240,23 @@ export const PreflightDashboard: React.FC = () => {
               Upload any PDF interior or cover to inspect page geometries, CMYK compliance, font embedding, and image resolution against print standards.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setIsUploadModalOpen(true)}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors"
-          >
-            <UploadCloud className="w-4 h-4" />
-            <span>Upload First PDF</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsUploadModalOpen(true)}
+              className="inline-flex items-center space-x-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-colors shadow-md"
+            >
+              <UploadCloud className="w-4 h-4" />
+              <span>Upload First PDF</span>
+            </button>
+            <Link
+              href="/products/preflight"
+              className="inline-flex items-center space-x-2 px-4 py-2.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-white rounded-lg text-xs font-semibold transition-colors border border-neutral-700"
+            >
+              <span>Learn About ATS Preflight</span>
+              <ArrowRight className="w-3.5 h-3.5 text-neutral-400" />
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden shadow-xl text-xs">

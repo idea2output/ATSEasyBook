@@ -38,6 +38,12 @@ export const PublicFooter: React.FC = () => {
                 </Link>
               </li>
               <li>
+                <Link href="/products/preflight" className="hover:text-white transition-colors flex items-center space-x-1.5">
+                  <span className="text-rose-500 font-bold">•</span>
+                  <span>ATS Preflight</span>
+                </Link>
+              </li>
+              <li>
                 <Link href="/#products" className="hover:text-white transition-colors flex items-center space-x-1.5">
                   <span className="text-rose-500 font-bold">•</span>
                   <span>ATS Imposition</span>
