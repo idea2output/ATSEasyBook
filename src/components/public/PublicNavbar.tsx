@@ -74,6 +74,13 @@ export const PublicNavbar: React.FC<PublicNavbarProps> = ({ onSampleBookLaunch }
               Products
             </Link>
             <Link
+              href="/#products"
+              id="public-nav-imposition-link"
+              className="hover:text-white hover:bg-neutral-900 transition-colors px-3.5 py-2 rounded-md text-xs font-semibold uppercase tracking-wider text-neutral-300"
+            >
+              Imposition
+            </Link>
+            <Link
               href="/preflight"
               id="public-nav-preflight-link"
               className="hover:text-white hover:bg-neutral-900 transition-colors px-3.5 py-2 rounded-md text-xs font-semibold uppercase tracking-wider text-rose-400"

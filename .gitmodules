@@ -1,0 +1,4 @@
+[submodule "imposition"]
+	path = imposition
+	url = https://github.com/idea2output/atsimpose.git
+	branch = imposition-only

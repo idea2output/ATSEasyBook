@@ -32,6 +32,8 @@ import { generatePreflightCertificatePdf, generatePreflightJsonReport } from '@/
 import { PreflightRepairModal } from './PreflightRepairModal';
 import { PreflightCompareView } from './PreflightCompareView';
 import { PreflightCommentsPanel } from './PreflightCommentsPanel';
+import { ImpositionLaunchModal } from '@/components/imposition/ImpositionLaunchModal';
+import { createHandoffFromPreflightJob } from '@/services/imposition/impositionHandoffService';
 
 interface PreflightReportViewProps {
   job: PreflightJob;
@@ -44,6 +46,7 @@ export const PreflightReportView: React.FC<PreflightReportViewProps> = ({ job, o
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPageNumber, setSelectedPageNumber] = useState<number | undefined>(undefined);
   const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
+  const [isImpositionModalOpen, setIsImpositionModalOpen] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [isDownloadingJson, setIsDownloadingJson] = useState(false);
 
@@ -227,6 +230,18 @@ export const PreflightReportView: React.FC<PreflightReportViewProps> = ({ job, o
               >
                 <Columns className="w-4 h-4 text-emerald-400" />
                 <span>Original vs Repaired</span>
+              </button>
+            )}
+
+            {job.impositionReadyMetadata && (
+              <button
+                type="button"
+                id="handoff-preflight-to-imposition-btn"
+                onClick={() => setIsImpositionModalOpen(true)}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-neutral-900 hover:bg-neutral-800 text-rose-400 border border-neutral-700 hover:border-rose-700 rounded-lg text-xs font-semibold transition-colors"
+              >
+                <Layers className="w-4 h-4 text-rose-500" />
+                <span>Imposition Handoff</span>
               </button>
             )}
           </div>
@@ -841,6 +856,15 @@ export const PreflightReportView: React.FC<PreflightReportViewProps> = ({ job, o
             onJobUpdated(updated);
             setActiveTab('compare');
           }}
+        />
+      )}
+
+      {/* Imposition Handoff & Launch Modal */}
+      {isImpositionModalOpen && (
+        <ImpositionLaunchModal
+          isOpen={isImpositionModalOpen}
+          onClose={() => setIsImpositionModalOpen(false)}
+          handoffPayload={createHandoffFromPreflightJob(job)}
         />
       )}
     </div>

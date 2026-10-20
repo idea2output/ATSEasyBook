@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ATS Imposition Job Handoff Specification",
+  "description": "Standard schema for certified prepress job handoff from ATS EasyBook and ATS Preflight to ATS Imposition (MyDraw).",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "handoffId",
+    "sourceApp",
+    "timestamp",
+    "document",
+    "prepress",
+    "impositionIntent",
+    "context"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": ["1.0"],
+      "description": "Contract schema version."
+    },
+    "handoffId": {
+      "type": "string",
+      "pattern": "^handoff-[a-z0-9-]+$",
+      "description": "Unique identifier for this handoff transaction."
+    },
+    "sourceApp": {
+      "type": "string",
+      "enum": ["ATS EasyBook", "ATS Preflight"],
+      "description": "Originating application within ATS Tech."
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of handoff creation."
+    },
+    "sourceProjectId": {
+      "type": "string",
+      "description": "Identifier of the EasyBook project, if applicable."
+    },
+    "preflightJobId": {
+      "type": "string",
+      "description": "Identifier of the Preflight inspection job, if applicable."
+    },
+    "document": {
+      "type": "object",
+      "required": [
+        "title",
+        "pdfFileName",
+        "pdfChecksumSha256",
+        "totalPageCount",
+        "trimWidthInches",
+        "trimHeightInches",
+        "trimWidthPt",
+        "trimHeightPt",
+        "bleedInches",
+        "orientation"
+      ],
+      "properties": {
+        "title": { "type": "string" },
+        "pdfFileName": { "type": "string" },
+        "pdfChecksumSha256": { "type": "string" },
+        "secureAssetUrl": { "type": "string" },
+        "totalPageCount": { "type": "integer", "minimum": 1 },
+        "trimWidthInches": { "type": "number", "exclusiveMinimum": 0 },
+        "trimHeightInches": { "type": "number", "exclusiveMinimum": 0 },
+        "trimWidthPt": { "type": "number", "exclusiveMinimum": 0 },
+        "trimHeightPt": { "type": "number", "exclusiveMinimum": 0 },
+        "bleedInches": {
+          "type": "object",
+          "required": ["top", "bottom", "left", "right"],
+          "properties": {
+            "top": { "type": "number", "minimum": 0 },
+            "bottom": { "type": "number", "minimum": 0 },
+            "left": { "type": "number", "minimum": 0 },
+            "right": { "type": "number", "minimum": 0 }
+          }
+        },
+        "orientation": {
+          "type": "string",
+          "enum": ["portrait", "landscape", "square"]
+        },
+        "bindingGutterInches": { "type": "number", "minimum": 0 }
+      }
+    },
+    "prepress": {
+      "type": "object",
+      "required": [
+        "colorSpace",
+        "outputIntentProfile",
+        "preflightStatus",
+        "preflightComplianceScore",
+        "hasSpotColors",
+        "isPure100KBlackText"
+      ],
+      "properties": {
+        "colorSpace": {
+          "type": "string",
+          "enum": ["CMYK", "Monochrome", "Spot"]
+        },
+        "outputIntentProfile": { "type": "string" },
+        "preflightStatus": {
+          "type": "string",
+          "enum": ["passed", "repaired", "warning"]
+        },
+        "preflightComplianceScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "hasSpotColors": { "type": "boolean" },
+        "spotColorNames": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "isPure100KBlackText": { "type": "boolean" }
+      }
+    },
+    "impositionIntent": {
+      "type": "object",
+      "required": [
+        "bindingType",
+        "pagesPerSignature",
+        "targetSheetSize",
+        "targetSheetWidthInches",
+        "targetSheetHeightInches",
+        "creepCompensationNeeded",
+        "estimatedSignaturesCount",
+        "blankPagesBalanceNeeded"
+      ],
+      "properties": {
+        "bindingType": {
+          "type": "string",
+          "enum": ["saddle-stitch", "perfect-bound", "flat-sheet", "spiral"]
+        },
+        "pagesPerSignature": {
+          "type": "integer",
+          "enum": [2, 4, 8, 16, 32]
+        },
+        "targetSheetSize": { "type": "string" },
+        "targetSheetWidthInches": { "type": "number", "exclusiveMinimum": 0 },
+        "targetSheetHeightInches": { "type": "number", "exclusiveMinimum": 0 },
+        "creepCompensationNeeded": { "type": "boolean" },
+        "estimatedSignaturesCount": { "type": "integer", "minimum": 1 },
+        "blankPagesBalanceNeeded": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "context": {
+      "type": "object",
+      "properties": {
+        "organizationId": { "type": "string" },
+        "organizationName": { "type": "string" },
+        "operatorEmail": { "type": "string" },
+        "pressProfile": { "type": "string" }
+      }
+    }
+  }
+}

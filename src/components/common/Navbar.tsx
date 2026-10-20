@@ -8,6 +8,7 @@ import { UserProfile, AuthSession } from '@/types/auth';
 import { AuthModal } from '../auth/AuthModal';
 import { UserProfileModal } from '../auth/UserProfileModal';
 import { MigrationModal } from '../cloud/MigrationModal';
+import { ImpositionLaunchModal } from '../imposition/ImpositionLaunchModal';
 
 interface NavbarProps {
   currentBookTitle?: string;
@@ -19,6 +20,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentBookTitle, onRefreshProje
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isMigrationModalOpen, setIsMigrationModalOpen] = useState(false);
+  const [isImpositionModalOpen, setIsImpositionModalOpen] = useState(false);
   const [localBooksCount, setLocalBooksCount] = useState(0);
 
   const checkUserAndLocal = () => {
@@ -132,6 +134,16 @@ export const Navbar: React.FC<NavbarProps> = ({ currentBookTitle, onRefreshProje
               <span>Preflight</span>
             </Link>
 
+            <button
+              type="button"
+              id="navbar-imposition-btn"
+              onClick={() => setIsImpositionModalOpen(true)}
+              className="text-xs font-medium text-slate-600 hover:text-rose-600 transition-colors px-3 py-1.5 rounded-md hover:bg-slate-100 flex items-center space-x-1"
+            >
+              <Layers className="w-3.5 h-3.5 text-rose-500" />
+              <span>Imposition</span>
+            </button>
+
             {/* User Account Controls */}
             {user ? (
               <div className="flex items-center space-x-2 pl-2 border-l border-slate-200">
@@ -198,6 +210,11 @@ export const Navbar: React.FC<NavbarProps> = ({ currentBookTitle, onRefreshProje
           checkUserAndLocal();
           if (onRefreshProjects) onRefreshProjects();
         }}
+      />
+
+      <ImpositionLaunchModal
+        isOpen={isImpositionModalOpen}
+        onClose={() => setIsImpositionModalOpen(false)}
       />
     </>
   );

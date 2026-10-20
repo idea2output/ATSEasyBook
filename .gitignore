@@ -35,4 +35,5 @@ next-env.d.ts
 
 # runtime storage
 /data/
+/dist/
 *.log

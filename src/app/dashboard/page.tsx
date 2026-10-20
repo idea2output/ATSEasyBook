@@ -6,7 +6,8 @@ import { BookProject } from '@/types/book';
 import { bookRepository } from '@/services/storage/bookRepository';
 import { BookCard } from '@/components/dashboard/BookCard';
 import { Navbar } from '@/components/common/Navbar';
-import { Plus, BookOpen, Sparkles, FileText, Loader2, AlertCircle, HardDrive, ShieldCheck } from 'lucide-react';
+import { Plus, BookOpen, Sparkles, FileText, Loader2, AlertCircle, HardDrive, ShieldCheck, Layers, ExternalLink } from 'lucide-react';
+import { ImpositionLaunchModal } from '@/components/imposition/ImpositionLaunchModal';
 
 export default function PublisherDashboardPage() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function PublisherDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState<{ id: string; title: string } | null>(null);
+  const [isImpositionModalOpen, setIsImpositionModalOpen] = useState(false);
 
   const loadBooks = async () => {
     try {
@@ -79,6 +81,17 @@ export default function PublisherDashboardPage() {
           <div className="flex items-center space-x-3">
             <button
               type="button"
+              id="dashboard-imposition-btn"
+              onClick={() => setIsImpositionModalOpen(true)}
+              className="inline-flex items-center space-x-2 px-3.5 py-2.5 text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-lg shadow-2xs hover:bg-rose-100 transition-colors"
+              title="Launch ATS Imposition Workspace"
+            >
+              <Layers className="w-4 h-4 text-rose-600" />
+              <span>ATS Imposition</span>
+            </button>
+
+            <button
+              type="button"
               id="dashboard-admin-templates-btn"
               onClick={() => router.push('/admin/templates')}
               className="inline-flex items-center space-x-2 px-3.5 py-2.5 text-sm font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg shadow-2xs hover:bg-purple-100 transition-colors"
@@ -108,6 +121,40 @@ export default function PublisherDashboardPage() {
               <Plus className="w-4 h-4" />
               <span>Create new book</span>
             </button>
+          </div>
+        </div>
+
+        {/* ATS Production Suite Quick-Access Strip */}
+        <div className="mt-6 p-4 bg-white border border-slate-200 rounded-xl shadow-xs">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex items-center space-x-3.5">
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-600">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center space-x-2">
+                  <h2 className="text-sm font-bold text-slate-900">ATS Imposition Engine</h2>
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded bg-rose-100 text-rose-800">
+                    Submodule v0.2.0
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Commercial sheet imposition, 8/16-page signatures, progressive creep compensation, and press marks.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3 w-full md:w-auto">
+              <button
+                type="button"
+                id="dashboard-launch-imposition-banner-btn"
+                onClick={() => setIsImpositionModalOpen(true)}
+                className="w-full md:w-auto inline-flex items-center justify-center space-x-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+              >
+                <span>Launch ATS Imposition</span>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -218,6 +265,11 @@ export default function PublisherDashboardPage() {
           </div>
         </div>
       )}
+      {/* ATS Imposition Launch & Handoff Modal */}
+      <ImpositionLaunchModal
+        isOpen={isImpositionModalOpen}
+        onClose={() => setIsImpositionModalOpen(false)}
+      />
     </div>
   );
 }
