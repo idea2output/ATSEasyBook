@@ -5,15 +5,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   BookOpen,
-  Layers,
   ArrowRight,
   Sparkles,
-  Printer,
-  CheckCircle2,
-  FileText,
+  Layers,
   Play,
-  RotateCcw,
-  ChevronDown,
 } from 'lucide-react';
 
 interface HeroSectionProps {
@@ -197,48 +192,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               Playfair + Manrope
             </button>
           </div>
-
-          {/* Scroll Cue to Live Demonstration */}
-          <a
-            href="#demo-interactive"
-            className="pt-6 sm:pt-10 inline-flex flex-col items-center space-y-1.5 text-neutral-400 hover:text-white transition-colors group cursor-pointer"
-            aria-label="Scroll down to interactive demonstration"
-          >
-            <span className="text-[11px] font-mono tracking-widest uppercase">Explore Live Prepress Engine</span>
-            <ChevronDown className="w-4 h-4 text-rose-500 animate-bounce group-hover:text-rose-400" />
-          </a>
         </div>
-      </div>
-
-      {/* 2. Full-Screen Video Demonstration (Full Height and Width of Screen) */}
-      <div
-        id="demo-interactive"
-        className="relative w-full h-[calc(100vh-4rem)] min-h-[600px] bg-black overflow-hidden flex items-center justify-center border-t border-neutral-900 scroll-mt-16 z-10"
-      >
-        <video
-          src="/videos/ats-product-demo.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          controls
-          className="w-full h-full object-contain relative z-0 transition-all duration-300"
-          style={{
-            filter: 'brightness(0.90) contrast(1.05)',
-          }}
-        />
-
-        {/* Dark Color Tint Overlay for Unified Theme (Passes pointer events to video controls) */}
-        <div
-          className="absolute inset-0 pointer-events-none mix-blend-multiply bg-neutral-950/20 z-10 transition-opacity duration-300"
-          aria-hidden="true"
-        />
-
-        {/* Subtle Vignette & Edge Shadow to blend smoothly with black theme */}
-        <div
-          className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.7)] z-10"
-          aria-hidden="true"
-        />
       </div>
     </section>
   );
