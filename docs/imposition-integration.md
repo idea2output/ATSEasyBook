@@ -44,49 +44,45 @@ git submodule update --init --recursive
 
 ## 3. Running Applications Independently
 
-### A. Run ATS EasyBook & Public Platform (Port 3000 / 3008)
+### A. Run Integrated ATS Tech & Impose (Same Host / Port 3008)
 ```bash
-# From workspace root
+# From workspace root - builds imposition and starts integrated platform
 npm install
-npm run dev
-# Running on http://localhost:3000 (or http://localhost:3008)
+npm run dev:impose-integrated
+# Access ATS Tech at http://localhost:3008/
+# Access ATS Impose at http://localhost:3008/Impose/
 ```
 
-### B. Run ATS Imposition (Port 5173)
+### B. Building & Running in Production
 ```bash
-# In the submodule directory
-cd imposition
-npm install
-npm run dev
-# Running on http://localhost:5173
+# Parent automated build automatically compiles Imposition and Next.js
+npm run build
+npm start -- -p 3008
 ```
 
 ---
 
-## 4. Building & Testing Independently
+## 4. Building & Testing Commands
 
-Both applications maintain isolated test and build pipelines:
+The integrated platform provides single-command parent workflows:
 
-| Application | Test Command | Build Command | Test Suite |
-| :--- | :--- | :--- | :--- |
-| **ATS EasyBook & Preflight** | `npm test` | `npm run build` | 16 test files (171+ tests) |
-| **ATS Imposition (MyDraw)** | `cd imposition && npm test` | `cd imposition && npm run build` | 19 test files (271 tests) |
+| Workflow | Command | Scope |
+| :--- | :--- | :--- |
+| **Integrated Platform Dev** | `npm run dev:impose-integrated` | Builds Imposition & starts Next.js on port 3008 |
+| **Build Imposition Submodule** | `npm run build:impose` | Compiles Imposition Vite dist output to `imposition/dist` |
+| **Build All Production** | `npm run build` | Builds Imposition then compiles Next.js production build |
+| **Test All Platforms** | `npm run test:all` | Runs 205 parent tests + 271 Imposition submodule tests |
+| **Imposition Submodule Only** | `npm --prefix imposition test` | Runs 19 submodule Vitest suites independently |
 
 ---
 
-## 5. Environment Configuration
+## 5. Environment & Routing Configuration
 
-In ATS EasyBook, configure the Imposition endpoint in `.env.local`:
+ATS Impose mounts seamlessly under `/Impose/` on the same host:
+- Local development: `http://localhost:3008/Impose/`
+- Production: `https://atstech.com/Impose/`
 
-```bash
-# Local development default
-NEXT_PUBLIC_IMPOSITION_URL=http://localhost:5173
-
-# Production dedicated subdomain recommendation
-# NEXT_PUBLIC_IMPOSITION_URL=https://imposition.atstech.com
-```
-
-If `NEXT_PUBLIC_IMPOSITION_URL` is omitted in development, ATS Tech automatically defaults to `http://localhost:5173`. Operators can also set a temporary custom override via the "Change Endpoint" control in the ATS Imposition launch modal.
+No separate localhost port (such as 5173) is required or opened. All navigation and job handoffs occur within the same browser tab without iframe embedding or popup redirects.
 
 ---
 

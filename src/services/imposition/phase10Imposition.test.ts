@@ -73,15 +73,16 @@ describe('Phase 10: ATS Imposition Git Submodule & Handoff Integration', () => {
       const config = getImpositionConfig();
       expect(config.isConfigured).toBe(true);
       expect(config.url).toBe(DEFAULT_IMPOSITION_DEV_URL);
-      expect(config.environment).toBe('development');
+      expect(config.url).toBe('/Impose/');
+      expect(config.environment).toBe('integrated');
     });
 
     it('respects environment variable NEXT_PUBLIC_IMPOSITION_URL', () => {
-      process.env.NEXT_PUBLIC_IMPOSITION_URL = 'https://imposition.atstech.com';
+      process.env.NEXT_PUBLIC_IMPOSITION_URL = 'https://atstech.com/Impose/';
       const config = getImpositionConfig();
       expect(config.isConfigured).toBe(true);
-      expect(config.url).toBe('https://imposition.atstech.com');
-      expect(config.environment).toBe('production');
+      expect(config.url).toBe('https://atstech.com/Impose/');
+      expect(config.environment).toBe('integrated');
       expect(config.source).toBe('env');
     });
 

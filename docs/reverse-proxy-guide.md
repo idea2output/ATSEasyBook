@@ -26,11 +26,6 @@ upstream nextjs_upstream {
     keepalive 64;
 }
 
-upstream impose_upstream {
-    server 127.0.0.1:5173;
-    keepalive 32;
-}
-
 server {
     listen 80;
     server_name atstech.com www.atstech.com;
@@ -49,10 +44,9 @@ server {
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 
-    # 1. ATS Impose Submodule (Proxy to Vite or Static Root)
+    # 1. ATS Impose Submodule (Direct Static Serving or Next.js Internal Route)
     location /Impose/ {
-        # Option A: Proxy to running Vite service
-        proxy_pass http://impose_upstream/Impose/;
+        proxy_pass http://nextjs_upstream/Impose/;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -60,9 +54,6 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Direct deep-link fallback
-        try_files $uri $uri/ /Impose/index.html;
     }
 
     # Case-insensitive alias for /impose/
@@ -93,12 +84,7 @@ server {
 atstech.com {
     encode gzip zstd
 
-    # ATS Impose routing
-    handle_path /Impose/* {
-        reverse_proxy 127.0.0.1:5173
-    }
-
-    # Default Next.js platform routing
+    # All routes including /Impose/ served by integrated ATS Tech host
     handle {
         reverse_proxy 127.0.0.1:3000
     }
@@ -114,7 +100,6 @@ In `.env.local`:
 # Port configuration
 PORT=3008
 
-# ATS Impose URL (defaults to /Impose/ for same-origin proxy or http://localhost:5173/Impose/)
+# ATS Impose URL (integrated same-origin mounting)
 NEXT_PUBLIC_IMPOSITION_URL=/Impose/
-IMPOSITION_INTERNAL_URL=http://localhost:5173
 ```

@@ -73,15 +73,6 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
   };
 
   const handleLaunch = async () => {
-    if (!config.url) return;
-
-    // For standard same-platform integration to /Impose/
-    const isSamePlatform =
-      config.url.includes('/Impose') ||
-      config.url.includes('/impose') ||
-      config.url.startsWith('/') ||
-      (typeof window !== 'undefined' && config.url.includes(window.location.host));
-
     if (handoffPayload) {
       try {
         const res = await fetch('/api/handoff', {
@@ -98,10 +89,8 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
       }
     }
 
-    // Launch standalone application in a new browser tab with strictly clean URL (zero tokens in URL)
-    const cleanTargetUrl = isSamePlatform ? '/Impose/' : config.url;
-    window.open(cleanTargetUrl, '_blank', 'noopener,noreferrer');
-    onClose();
+    // Launch inside the current browser window on the same host (never new tab, never localhost:5173)
+    window.location.href = '/Impose/';
   };
 
   return (
@@ -164,76 +153,26 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
             </div>
           </div>
 
-          {/* Endpoint Status & Resolution */}
-          <div className="space-y-3 p-4 bg-neutral-900/60 border border-neutral-800 rounded-xl">
+          {/* Integrated Endpoint Mounting Status */}
+          <div className="space-y-2 p-4 bg-neutral-900/60 border border-neutral-800 rounded-xl">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-neutral-400 flex items-center space-x-1.5">
                 <Settings className="w-3.5 h-3.5 text-rose-500" />
-                <span>Imposition Service Endpoint</span>
+                <span>Integrated Application Route</span>
               </span>
-              <button
-                type="button"
-                onClick={() => setIsEditingUrl(!isEditingUrl)}
-                className="text-[11px] font-mono text-rose-400 hover:text-rose-300 underline"
-              >
-                {isEditingUrl ? 'Cancel' : 'Change Endpoint'}
-              </button>
+              <span className="px-2 py-0.5 text-[10px] font-mono uppercase rounded border bg-emerald-950/40 text-emerald-300 border-emerald-800 font-bold">
+                Same-Origin Mounted
+              </span>
             </div>
 
-            {isEditingUrl ? (
-              <div className="space-y-2 pt-1">
-                <input
-                  type="text"
-                  value={customInputUrl}
-                  onChange={(e) => setCustomInputUrl(e.target.value)}
-                  placeholder="e.g. http://localhost:5173 or https://imposition.atstech.com"
-                  className="w-full bg-neutral-950 border border-neutral-700 text-white text-xs font-mono rounded-lg p-2.5 focus:border-rose-500 focus:outline-none"
-                />
-                <div className="flex items-center space-x-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={handleSaveCustomUrl}
-                    className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-md"
-                  >
-                    Save Endpoint
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleResetToDefault}
-                    className="px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-neutral-300 rounded-md font-mono text-[11px]"
-                  >
-                    Reset Default
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <span
-                      className={`w-2 h-2 rounded-full ${
-                        config.isConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                      }`}
-                    />
-                    <span className="text-xs font-mono font-bold text-white">
-                      {config.isConfigured ? config.url : 'No Endpoint Configured'}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-neutral-400 mt-0.5">{config.statusDescription}</p>
-                </div>
-                <span
-                  className={`px-2 py-0.5 text-[10px] font-mono uppercase rounded border ${
-                    config.environment === 'production'
-                      ? 'bg-purple-950/40 text-purple-300 border-purple-800'
-                      : config.environment === 'development'
-                      ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800'
-                      : 'bg-neutral-900 text-neutral-400 border-neutral-800'
-                  }`}
-                >
-                  {config.environment}
-                </span>
-              </div>
-            )}
+            <div className="flex items-center space-x-2 pt-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-xs font-mono font-bold text-white">/Impose/</span>
+              <span className="text-neutral-500 font-mono text-[11px]">• Unified ATS Tech Host (No separate localhost port)</span>
+            </div>
+            <p className="text-[11px] text-neutral-400">
+              ATS Impose runs inside the current window at <code className="text-neutral-300">/Impose/</code> with shared authentication, unified navigation, and secure handoffs.
+            </p>
           </div>
 
           {/* Hand-off Packet Preview (if provided) */}
@@ -292,8 +231,8 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
 
         {/* Modal Footer */}
         <div className="p-5 bg-neutral-900/80 border-t border-neutral-800 flex items-center justify-between">
-          <div className="text-[11px] text-neutral-500 font-mono">
-            Opens in independent browser tab (never iframe)
+          <div className="text-[11px] text-neutral-400 font-mono">
+            Mounts in current window at <code className="text-rose-400 font-bold">/Impose/</code>
           </div>
 
           <div className="flex items-center space-x-3">
@@ -313,8 +252,8 @@ export const ImpositionLaunchModal: React.FC<ImpositionLaunchModalProps> = ({
               disabled={!config.isConfigured}
               className="inline-flex items-center space-x-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-neutral-800 disabled:text-neutral-500 text-white rounded-lg text-xs font-bold transition-all hover:scale-[1.02] shadow-sm"
             >
-              <span>Launch ATS Imposition</span>
-              <ExternalLink className="w-3.5 h-3.5" />
+              <span>Open ATS Impose</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>

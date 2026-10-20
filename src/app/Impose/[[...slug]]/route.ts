@@ -209,10 +209,38 @@ export async function GET(
     });
   }
 
-  return NextResponse.json(
-    { error: 'ATS Impose static build not found. Run `npm --prefix imposition run build`.' },
-    { status: 404, headers: SECURITY_HEADERS }
-  );
+  const notBuiltHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ATS Impose - Build Required</title>
+  <style>
+    body { background-color: #0a0a0a; color: #fff; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+    .card { background-color: #171717; border: 1px solid #262626; border-radius: 1rem; padding: 2.5rem; max-width: 34rem; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+    h1 { color: #f43f5e; font-size: 1.35rem; margin-bottom: 0.75rem; font-weight: 800; }
+    p { color: #a3a3a3; font-size: 0.875rem; line-height: 1.6; margin-bottom: 1.25rem; }
+    code { background: #000; padding: 0.35rem 0.65rem; border-radius: 0.375rem; font-family: monospace; color: #fb7185; }
+    .btn { display: inline-block; background: #e11d48; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-family: monospace; font-size: 10px; color: #e11d48; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem;">ATS Prepress Gateway</div>
+    <h1>ATS Impose is not built. Run the integrated Imposition build.</h1>
+    <p>The static distribution assets for ATS Impose could not be found under the integrated route. Run the integrated build command:</p>
+    <p><code>npm run build:impose</code></p>
+    <a href="/dashboard" class="btn">Return to Dashboard</a>
+  </div>
+</body>
+</html>`;
+
+  return new NextResponse(notBuiltHtml, {
+    status: 404,
+    headers: {
+      ...SECURITY_HEADERS,
+      'Content-Type': 'text/html; charset=utf-8',
+    },
+  });
 }
 
 /**

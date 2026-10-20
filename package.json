@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "dev:impose-integrated": "npm run build:impose && next dev",
+    "build:impose": "npm --prefix imposition run build",
+    "build": "npm run build:impose && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:all": "vitest run && npm --prefix imposition test"
   },
   "dependencies": {
     "clsx": "^2.1.1",
