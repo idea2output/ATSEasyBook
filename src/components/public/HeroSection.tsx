@@ -27,15 +27,18 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 }) => {
   const router = useRouter();
   const [activeVisualTab, setActiveVisualTab] = useState<'transformation' | 'imposition'>('transformation');
-  const [fontPairing, setFontPairing] = useState<'palagio-sans' | 'palagio-manrope' | 'palagio-poppins' | 'playfair-manrope'>('palagio-sans');
+  const [fontPairing, setFontPairing] = useState<'palagio-sans' | 'palagio-manrope' | 'tenor-manrope' | 'syne-inter' | 'playfair-manrope'>('palagio-sans');
 
   const getLine1FontClass = () => {
     switch (fontPairing) {
+      case 'tenor-manrope':
+        return 'font-tenor';
+      case 'syne-inter':
+        return 'font-syne';
       case 'playfair-manrope':
         return 'font-playfair';
       case 'palagio-sans':
       case 'palagio-manrope':
-      case 'palagio-poppins':
       default:
         return 'font-palagio';
     }
@@ -44,10 +47,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   const getLine2FontClass = () => {
     switch (fontPairing) {
       case 'palagio-manrope':
+      case 'tenor-manrope':
       case 'playfair-manrope':
         return 'font-manrope';
-      case 'palagio-poppins':
-        return 'font-poppins';
+      case 'syne-inter':
       case 'palagio-sans':
       default:
         return 'font-hero-sans';
@@ -144,7 +147,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                   : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400'
               }`}
             >
-              Palagio + Inter (Default)
+              Palagio (Original) + Inter
             </button>
             <button
               type="button"
@@ -160,15 +163,27 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </button>
             <button
               type="button"
-              id="font-pairing-palagio-poppins"
-              onClick={() => setFontPairing('palagio-poppins')}
+              id="font-pairing-tenor-manrope"
+              onClick={() => setFontPairing('tenor-manrope')}
               className={`px-3 py-1 rounded-full border transition-all ${
-                fontPairing === 'palagio-poppins'
+                fontPairing === 'tenor-manrope'
                   ? 'bg-rose-600/20 border-rose-500/50 text-rose-300 font-bold'
                   : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400'
               }`}
             >
-              Palagio + Poppins
+              Tenor Sans (Similar) + Manrope
+            </button>
+            <button
+              type="button"
+              id="font-pairing-syne-inter"
+              onClick={() => setFontPairing('syne-inter')}
+              className={`px-3 py-1 rounded-full border transition-all ${
+                fontPairing === 'syne-inter'
+                  ? 'bg-rose-600/20 border-rose-500/50 text-rose-300 font-bold'
+                  : 'bg-neutral-900/60 border-neutral-800 hover:border-neutral-700 text-neutral-400'
+              }`}
+            >
+              Syne + Inter
             </button>
             <button
               type="button"
